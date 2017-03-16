@@ -14,11 +14,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="manifest.yml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="web.config;">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include=".dockerignore;">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="manifest.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
@@ -35,16 +42,18 @@
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="1.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.1.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="1.1.0" />
+    <PackageReference Include="Steeltoe.Extensions.Configuration.CloudFoundry" Version="1.0.0-*" />
+    <PackageReference Include="Steeltoe.CloudFoundry.Connector.PostgreSql" Version="1.0.0-*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="1.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="1.1.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.Design" Version="1.1.0" />
+  
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="1.1.0" />
     <PackageReference Include="Swashbuckle" Version="6.0.0-beta902" />
     <PackageReference Include="MediatR" Version="2.1.0" />
@@ -52,6 +61,7 @@
     <PackageReference Include="IdentityServer4.AccessTokenValidation" Version="1.0.1-rc3" />
     <PackageReference Include="Dapper" Version="1.50.2" />
     <PackageReference Include="System.ValueTuple" Version="4.3.0" />
+    <PackageReference Include="Npgsql" Version="3.2.1" />
   </ItemGroup>
 
   <ItemGroup>

@@ -3,6 +3,7 @@
     using Dapper;
     using Microsoft.Extensions.Configuration;
     using System.Data.SqlClient;
+    using Npgsql;
     using System.Threading.Tasks;
     using System;
     using System.Dynamic;
@@ -11,29 +12,29 @@
     public class OrderQueries
         :IOrderQueries
     {
-        private string _connectionString = string.Empty;
+        private NpgsqlConnection _connection = null;
 
-        public OrderQueries(string constr)
+        public OrderQueries(NpgsqlConnection connection)
         {
-            _connectionString = !string.IsNullOrWhiteSpace(constr) ? constr : throw new ArgumentNullException(nameof(constr));
+            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         }
 
 
         public async Task<dynamic> GetOrder(int id)
         {
-            using (var connection = new SqlConnection(_connectionString))
+            using (_connection)
             {
-                connection.Open();
+                _connection.Open();
 
-                var result = await connection.QueryAsync<dynamic>(
-                   @"select o.[Id] as ordernumber,o.OrderDate as date, os.Name as status, 
-                        oi.ProductName as productname, oi.Units as units, oi.UnitPrice as unitprice, oi.PictureUrl as pictureurl, 
-						a.Street as street, a.City as city, a.Country as country, a.State as state, a.ZipCode as zipcode
-                        FROM ordering.Orders o
-                        INNER JOIN ordering.Address a ON o.AddressId = a.Id 
-                        LEFT JOIN ordering.Orderitems oi ON o.Id = oi.orderid 
-                        LEFT JOIN ordering.orderstatus os on o.OrderStatusId = os.Id
-                        WHERE o.Id=@id"
+                var result = await _connection.QueryAsync<dynamic>(
+                   @"select o.""Id"" as ordernumber, o.""OrderDate"" as date, os.""Name"" as status, 
+                        oi.""ProductName"" as productname, oi.""Units"" as units, oi.""UnitPrice"" as unitprice, oi.""PictureUrl"" as pictureurl,
+                        a.""Street"" as street, a.""City"" as city, a.""Country"" as country, a.""State"" as state, a.""ZipCode"" as zipcode
+                        FROM ""ordering"".""orders"" o
+                        INNER JOIN ""ordering"".""address"" a ON a.""Id"" = o.""AddressId""
+                        LEFT JOIN ""ordering"".""orderItems"" oi ON o.""Id"" = oi.""OrderId""
+                        LEFT JOIN ""ordering"".""orderstatus"" os on o.""OrderStatusId"" = os.""Id""
+                        WHERE o.""Id""=@id"
                         , new { id }
                     );
 
@@ -46,25 +47,25 @@
 
         public async Task<dynamic> GetOrders()
         {
-            using (var connection = new SqlConnection(_connectionString))
+            using (_connection)
             {
-                connection.Open();
+                _connection.Open();
 
-                return await connection.QueryAsync<dynamic>(@"SELECT o.[Id] as ordernumber,o.[OrderDate] as [date],os.[Name] as [status],SUM(oi.units*oi.unitprice) as total
-                     FROM [ordering].[Orders] o
-                     LEFT JOIN[ordering].[orderitems] oi ON  o.Id = oi.orderid 
-                     LEFT JOIN[ordering].[orderstatus] os on o.OrderStatusId = os.Id
-                     GROUP BY o.[Id], o.[OrderDate], os.[Name]");
+                return await _connection.QueryAsync<dynamic>(@"SELECT o.""Id"" as ordernumber,o.""OrderDate"" as date, os.""Name"" as status, SUM(oi.""Units"" * oi.""UnitPrice"") as total
+                     FROM ""ordering"".""orders"" o
+                     LEFT JOIN ""ordering"".""orderItems"" oi ON oi.""OrderId"" = o.""Id""
+                     LEFT JOIN ""ordering"".""orderstatus"" os on o.""OrderStatusId"" = os.""Id""
+                     GROUP BY o.""Id"", o.""OrderDate"", os.""Name""");
             }
         }
 
         public async Task<dynamic> GetCardTypes()
         {
-            using (var connection = new SqlConnection(_connectionString))
+            using (_connection)
             {
-                connection.Open();
+                _connection.Open();
 
-                return await connection.QueryAsync<dynamic>("SELECT * FROM ordering.cardtypes");
+                return await _connection.QueryAsync<dynamic>(@"SELECT * FROM ""ordering"".""cardtypes""");
             }
         }
 

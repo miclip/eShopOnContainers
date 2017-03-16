@@ -13,11 +13,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="manifest.yml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="web.config">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
     <Content Include=".dockerignore">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="manifest.yml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
@@ -28,12 +35,14 @@
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.1.0" />
-    <PackageReference Include="StackExchange.Redis" Version="1.1.608" />
+    <PackageReference Include="Steeltoe.CloudFoundry.Connector.Redis" Version="1.0.0-rc2" />
+    <PackageReference Include="Steeltoe.Extensions.Configuration.CloudFoundry" Version="1.0.0-*" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="IdentityServer4.AccessTokenValidation" Version="1.0.1-rc3" />
     <PackageReference Include="Swashbuckle" Version="6.0.0-beta902" />

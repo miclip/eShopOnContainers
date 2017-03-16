@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using System.IO;
 
 namespace eShopConContainers.WebSPA
@@ -7,10 +8,16 @@ namespace eShopConContainers.WebSPA
     {
         public static void Main(string[] args)
         {
+            var config = new ConfigurationBuilder()
+            .AddCommandLine(args)
+            .AddEnvironmentVariables(prefix: "ASPNETCORE_")
+            .Build();
+
             var host = new WebHostBuilder()
                 .UseKestrel()
-                .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseIISIntegration()
+                .UseConfiguration(config)
+                .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .Build();
 

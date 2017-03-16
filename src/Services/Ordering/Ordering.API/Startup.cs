@@ -15,6 +15,9 @@
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using Ordering.Infrastructure;
+    using Steeltoe.CloudFoundry.Connector.PostgreSql;
+    using Steeltoe.CloudFoundry.Connector.PostgreSql.EFCore;
+    using Steeltoe.Extensions.Configuration;
     using System;
     using System.Reflection;
 
@@ -25,8 +28,8 @@
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("settings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"settings.{env.EnvironmentName}.json", optional: true);
-
+                .AddJsonFile($"settings.{env.EnvironmentName}.json", optional: true)
+                .AddCloudFoundry();
             if (env.IsDevelopment())
             {
                 builder.AddUserSecrets(typeof(Startup).GetTypeInfo().Assembly);
@@ -48,10 +51,10 @@
             }).AddControllersAsServices();  //Injecting Controllers themselves thru DI
                                             //For further info see: http://docs.autofac.org/en/latest/integration/aspnetcore.html#controllers-as-services
 
-            services.AddEntityFrameworkSqlServer()
+            services.AddEntityFrameworkNpgsql()
                     .AddDbContext<OrderingContext>(options =>
                     {
-                        options.UseSqlServer(Configuration["ConnectionString"],
+                        options.UseNpgsql(Configuration,
                             sqlop => sqlop.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name));
                     },
                     ServiceLifetime.Scoped  //DbContext is shared across the HTTP request scope (graph of objects started in the HTTP request)
@@ -83,17 +86,16 @@
             // Add application services.
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddTransient<IIdentityService, IdentityService>();
-
+            services.AddPostgresConnection(Configuration);
             services.AddOptions();
 
             //configure autofac
 
             var container = new ContainerBuilder();
             container.Populate(services);
-
             container.RegisterModule(new MediatorModule());
-            container.RegisterModule(new ApplicationModule(Configuration["ConnectionString"]));
-
+            container.RegisterModule(new ApplicationModule());
+            
             return new AutofacServiceProvider(container.Build());
         }
 

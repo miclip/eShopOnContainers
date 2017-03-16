@@ -1,0 +1,6 @@
+﻿applications:
+- name: eshopcontainersmvc
+  buildpack: https://github.com/cloudfoundry/dotnet-core-buildpack.git
+  memory: 512M
+  health-check-type: none
+ 

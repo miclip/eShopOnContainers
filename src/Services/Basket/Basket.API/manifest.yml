@@ -1,0 +1,7 @@
+﻿applications:
+- name: basketapi
+  buildpack: https://github.com/cloudfoundry/dotnet-core-buildpack.git
+  memory: 512M
+  health-check-type: none
+  services:
+  - eShopRedisStore

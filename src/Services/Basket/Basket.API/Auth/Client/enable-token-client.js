@@ -1,7 +1,7 @@
 ﻿(function ($, swaggerUi) {
     $(function () {
         var settings = {
-            authority: 'https://localhost:5105',
+            authority: 'https://identityapi.cfapps.io',
             client_id: 'js',
             popup_redirect_uri: window.location.protocol
                 + '//'

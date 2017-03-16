@@ -17,6 +17,8 @@ using IdentityServer4.Services;
 using System.Threading;
 using Microsoft.eShopOnContainers.Services.Catalog.API.Infrastructure;
 using Microsoft.AspNetCore.Identity;
+using Steeltoe.Extensions.Configuration;
+using Steeltoe.CloudFoundry.Connector.PostgreSql.EFCore;
 
 namespace eShopOnContainers.Identity
 {
@@ -27,7 +29,8 @@ namespace eShopOnContainers.Identity
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true);
+                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddCloudFoundry();
 
             if (env.IsDevelopment())
             {
@@ -46,7 +49,7 @@ namespace eShopOnContainers.Identity
         {
             // Add framework services.
             services.AddDbContext<ApplicationDbContext>(options =>
-             options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+             options.UseNpgsql(Configuration));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()

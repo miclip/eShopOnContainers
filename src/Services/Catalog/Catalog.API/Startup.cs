@@ -10,6 +10,8 @@
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
+    using Steeltoe.CloudFoundry.Connector.PostgreSql.EFCore;
+    using Steeltoe.Extensions.Configuration;
     using System;
     using System.IO;
     using System.Reflection;
@@ -25,7 +27,8 @@
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile($"settings.json", optional: false, reloadOnChange: true)
-                .AddJsonFile($"settings.{env.EnvironmentName}.json", optional: true);
+                .AddJsonFile($"settings.{env.EnvironmentName}.json", optional: true)
+                .AddCloudFoundry();
 
             if (env.IsDevelopment())
             {
@@ -41,10 +44,10 @@
         {
             services.AddDbContext<CatalogContext>(c =>
             {
-                c.UseSqlServer(Configuration["ConnectionString"]);
-                // Changing default behavior when client evaluation occurs to throw. 
-                // Default in EF Core would be to log a warning when client evaluation is performed.
-                c.ConfigureWarnings(warnings => warnings.Throw(RelationalEventId.QueryClientEvaluationWarning));
+             c.UseNpgsql(Configuration);
+            // Changing default behavior when client evaluation occurs to throw. 
+            // Default in EF Core would be to log a warning when client evaluation is performed.
+            c.ConfigureWarnings(warnings => warnings.Throw(RelationalEventId.QueryClientEvaluationWarning));
                 //Check Client vs. Server evaluation: https://docs.microsoft.com/en-us/ef/core/querying/client-eval
             });
 

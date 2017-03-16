@@ -12,31 +12,12 @@ namespace Ordering.API.Migrations
             migrationBuilder.EnsureSchema(
                 name: "ordering");
 
-            migrationBuilder.CreateSequence(
-                name: "orderitemseq",
-                incrementBy: 10);
-
-            migrationBuilder.CreateSequence(
-                name: "buyerseq",
-                schema: "ordering",
-                incrementBy: 10);
-
-            migrationBuilder.CreateSequence(
-                name: "orderseq",
-                schema: "ordering",
-                incrementBy: 10);
-
-            migrationBuilder.CreateSequence(
-                name: "paymentseq",
-                schema: "ordering",
-                incrementBy: 10);
-
-            migrationBuilder.CreateTable(
+           migrationBuilder.CreateTable(
                 name: "buyers",
                 schema: "ordering",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
                     IdentityGuid = table.Column<string>(maxLength: 200, nullable: false)
                 },
                 constraints: table =>
@@ -63,7 +44,7 @@ namespace Ordering.API.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
-                        .Annotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn),
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
                     City = table.Column<string>(nullable: true),
                     Country = table.Column<string>(nullable: true),
                     State = table.Column<string>(nullable: true),
@@ -93,7 +74,7 @@ namespace Ordering.API.Migrations
                 schema: "ordering",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
                     Alias = table.Column<string>(maxLength: 200, nullable: false),
                     BuyerId = table.Column<int>(nullable: false),
                     CardHolderName = table.Column<string>(maxLength: 200, nullable: false),
@@ -125,7 +106,7 @@ namespace Ordering.API.Migrations
                 schema: "ordering",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
                     AddressId = table.Column<int>(nullable: true),
                     BuyerId = table.Column<int>(nullable: false),
                     OrderDate = table.Column<DateTime>(nullable: false),
@@ -170,7 +151,7 @@ namespace Ordering.API.Migrations
                 schema: "ordering",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
                     Discount = table.Column<decimal>(nullable: false),
                     OrderId = table.Column<int>(nullable: false),
                     PictureUrl = table.Column<string>(nullable: true),
@@ -271,20 +252,7 @@ namespace Ordering.API.Migrations
                 name: "cardtypes",
                 schema: "ordering");
 
-            migrationBuilder.DropSequence(
-                name: "orderitemseq");
-
-            migrationBuilder.DropSequence(
-                name: "buyerseq",
-                schema: "ordering");
-
-            migrationBuilder.DropSequence(
-                name: "orderseq",
-                schema: "ordering");
-
-            migrationBuilder.DropSequence(
-                name: "paymentseq",
-                schema: "ordering");
+          
         }
     }
 }

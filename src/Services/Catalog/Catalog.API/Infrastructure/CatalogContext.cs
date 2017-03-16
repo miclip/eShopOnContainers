@@ -24,7 +24,7 @@
             builder.ToTable("Catalog");
 
             builder.Property(ci => ci.Id)
-                .ForSqlServerUseSequenceHiLo("catalog_hilo")
+                .ValueGeneratedOnAdd()
                 .IsRequired();
 
             builder.Property(ci => ci.Name)
@@ -53,7 +53,7 @@
             builder.HasKey(ci => ci.Id);
 
             builder.Property(ci => ci.Id)
-               .ForSqlServerUseSequenceHiLo("catalog_brand_hilo")
+               .ValueGeneratedOnAdd()
                .IsRequired();
 
             builder.Property(cb => cb.Brand)
@@ -68,7 +68,7 @@
             builder.HasKey(ci => ci.Id);
 
             builder.Property(ci => ci.Id)
-               .ForSqlServerUseSequenceHiLo("catalog_type_hilo")
+               .ValueGeneratedOnAdd()
                .IsRequired();
 
             builder.Property(cb => cb.Type)
