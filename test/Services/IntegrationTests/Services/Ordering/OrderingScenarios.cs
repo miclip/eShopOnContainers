@@ -1,13 +1,13 @@
 ﻿namespace IntegrationTests.Services.Ordering
 {
-    using Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands;
+    using IntegrationTests.Services.Extensions;
     using Newtonsoft.Json;
-    using System;
+    using System.Net;
     using System.Net.Http;
     using System.Text;
     using System.Threading.Tasks;
+    using WebMVC.Models;
     using Xunit;
-    using static Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands.CreateOrderCommand;
 
     public class OrderingScenarios
         : OrderingScenarioBase
@@ -25,74 +25,38 @@
         }
 
         [Fact]
-        public async Task AddNewOrder_add_new_order_and_response_ok_status_code()
+        public async Task Cancel_order_no_order_created_bad_request_response()
         {
             using (var server = CreateServer())
             {
                 var content = new StringContent(BuildOrder(), UTF8Encoding.UTF8, "application/json");
-                var response = await server.CreateClient()
-                    .PostAsync(Post.AddNewOrder, content);
+                var response = await server.CreateIdempotentClient()
+                    .PutAsync(Put.CancelOrder, content);
 
-                response.EnsureSuccessStatusCode();
+                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             }
         }
 
         [Fact]
-        public async Task AddNewOrder_response_bad_request_if_card_expiration_is_invalid()
+        public async Task Ship_order_no_order_created_bad_request_response()
         {
             using (var server = CreateServer())
             {
-                var content = new StringContent(BuildOrderWithInvalidExperationTime(), UTF8Encoding.UTF8, "application/json");
+                var content = new StringContent(BuildOrder(), UTF8Encoding.UTF8, "application/json");
+                var response = await server.CreateIdempotentClient()
+                    .PutAsync(Put.ShipOrder, content);
 
-                var response = await server.CreateClient()
-                    .PostAsync(Post.AddNewOrder, content);
-
-                Assert.True(response.StatusCode == System.Net.HttpStatusCode.BadRequest);
+                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             }
         }
 
         string BuildOrder()
         {
-            var order = new CreateOrderCommand(
-                cardExpiration: DateTime.UtcNow.AddYears(1),
-                cardNumber: "5145-555-5555",
-                cardHolderName: "Jhon Senna",
-                cardSecurityNumber: "232",
-                cardTypeId: 1,
-                city: "Redmon",
-                country: "USA",
-                state: "WA",
-                street: "One way",
-                zipcode: "zipcode"
-            );
-
-            order.AddOrderItem(new OrderItemDTO()
+            var order = new OrderDTO()
             {
-                ProductId = 1,
-                Discount = 10M,
-                UnitPrice = 10,
-                Units = 1,
-                ProductName = "Some name"
-            });
-
+                OrderNumber = "-1"
+            };
             return JsonConvert.SerializeObject(order);
-        }
-        string BuildOrderWithInvalidExperationTime()
-        {
-            var order = new CreateOrderCommand(
-                cardExpiration: DateTime.UtcNow.AddYears(-1),
-                cardNumber: "5145-555-5555",
-                cardHolderName: "Jhon Senna",
-                cardSecurityNumber: "232",
-                cardTypeId: 1,
-                city: "Redmon",
-                country: "USA",
-                state: "WA",
-                street: "One way",
-                zipcode: "zipcode"
-            );
-
-            return JsonConvert.SerializeObject(order);
-        }
-    }
+        }        
+    }        
 }

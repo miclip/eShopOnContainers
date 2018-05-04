@@ -1,219 +1,94 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.BuyerAggregate;
 using Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.OrderAggregate;
 using Microsoft.eShopOnContainers.Services.Ordering.Domain.Seedwork;
+using Ordering.Infrastructure;
+using Ordering.Infrastructure.EntityConfigurations;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.eShopOnContainers.Services.Ordering.Infrastructure
 {
-    public class OrderingContext
-      : DbContext,IUnitOfWork
-
+    public class OrderingContext : DbContext, IUnitOfWork
     {
-        const string DEFAULT_SCHEMA = "ordering";
-
+        public const string DEFAULT_SCHEMA = "ordering";
         public DbSet<Order> Orders { get; set; }
-
         public DbSet<OrderItem> OrderItems { get; set; }
-
         public DbSet<PaymentMethod> Payments { get; set; }
-
         public DbSet<Buyer> Buyers { get; set; }
-
         public DbSet<CardType> CardTypes { get; set; }
-
         public DbSet<OrderStatus> OrderStatus { get; set; }
 
-        public OrderingContext(DbContextOptions options) : base(options) { }
+        private readonly IMediator _mediator;
+
+        private OrderingContext(DbContextOptions<OrderingContext> options) : base (options) { }
+
+        public OrderingContext(DbContextOptions<OrderingContext> options, IMediator mediator) : base(options)
+        {
+            _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+
+
+            System.Diagnostics.Debug.WriteLine("OrderingContext::ctor ->" + this.GetHashCode());
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
-            modelBuilder.Entity<ClientRequest>(ConfigureRequests);
-            modelBuilder.Entity<Address>(ConfigureAddress);
-            modelBuilder.Entity<PaymentMethod>(ConfigurePayment);
-            modelBuilder.Entity<Order>(ConfigureOrder);
-            modelBuilder.Entity<OrderItem>(ConfigureOrderItems);
-            modelBuilder.Entity<CardType>(ConfigureCardTypes);
-            modelBuilder.Entity<OrderStatus>(ConfigureOrderStatus);
-            modelBuilder.Entity<Buyer>(ConfigureBuyer);
+            modelBuilder.ApplyConfiguration(new ClientRequestEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new PaymentMethodEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new OrderEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new OrderItemEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new CardTypeEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new OrderStatusEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new BuyerEntityTypeConfiguration()); 
         }
 
-        private void ConfigureRequests(EntityTypeBuilder<ClientRequest> requestConfiguration)
+        public async Task<bool> SaveEntitiesAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            requestConfiguration.ToTable("requests", DEFAULT_SCHEMA);
-            requestConfiguration.HasKey(cr => cr.Id);
-            requestConfiguration.Property(cr => cr.Name).IsRequired();
-            requestConfiguration.Property(cr => cr.Time).IsRequired();
+            // Dispatch Domain Events collection. 
+            // Choices:
+            // A) Right BEFORE committing data (EF SaveChanges) into the DB will make a single transaction including  
+            // side effects from the domain event handlers which are using the same DbContext with "InstancePerLifetimeScope" or "scoped" lifetime
+            // B) Right AFTER committing data (EF SaveChanges) into the DB will make multiple transactions. 
+            // You will need to handle eventual consistency and compensatory actions in case of failures in any of the Handlers. 
+            await _mediator.DispatchDomainEventsAsync(this);
+
+            // After executing this line all the changes (from the Command Handler and Domain Event Handlers) 
+            // performed throught the DbContext will be commited
+            var result = await base.SaveChangesAsync();
+
+            return true;
+        }        
+    }
+
+    public class OrderingContextDesignFactory : IDesignTimeDbContextFactory<OrderingContext>
+    {
+        public OrderingContext CreateDbContext(string[] args)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<OrderingContext>()
+                .UseSqlServer("Server=.;Initial Catalog=Microsoft.eShopOnContainers.Services.OrderingDb;Integrated Security=true");
+
+            return new OrderingContext(optionsBuilder.Options,new NoMediator());
         }
 
-        void ConfigureAddress(EntityTypeBuilder<Address> addressConfiguration)
+        class NoMediator : IMediator
         {
-            addressConfiguration.ToTable("address", DEFAULT_SCHEMA);
+            public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default(CancellationToken)) where TNotification : INotification
+            {
+                return Task.CompletedTask;
+            }
 
-            addressConfiguration.Property<int>("Id")
-                .IsRequired();
+            public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default(CancellationToken))
+            {
+                return Task.FromResult<TResponse>(default(TResponse));
+            }
 
-            addressConfiguration.HasKey("Id");
-        }
-
-        void ConfigureBuyer(EntityTypeBuilder<Buyer> buyerConfiguration)
-        {
-            buyerConfiguration.ToTable("buyers", DEFAULT_SCHEMA);
-
-            buyerConfiguration.HasKey(b => b.Id);
-
-            buyerConfiguration.Property(b => b.Id)
-                .ForSqlServerUseSequenceHiLo("buyerseq", DEFAULT_SCHEMA);
-
-            buyerConfiguration.Property(b=>b.IdentityGuid)
-                .HasMaxLength(200)
-                .IsRequired();
-
-            buyerConfiguration.HasIndex("IdentityGuid")
-              .IsUnique(true);
-
-            buyerConfiguration.HasMany(b => b.PaymentMethods)
-               .WithOne()
-               .HasForeignKey("BuyerId")
-               .OnDelete(DeleteBehavior.Cascade);
-
-            var navigation = buyerConfiguration.Metadata.FindNavigation(nameof(Buyer.PaymentMethods));
-
-            navigation.SetPropertyAccessMode(PropertyAccessMode.Field);
-        }
-
-        void ConfigurePayment(EntityTypeBuilder<PaymentMethod> paymentConfiguration)
-        {
-            paymentConfiguration.ToTable("paymentmethods", DEFAULT_SCHEMA);
-
-            paymentConfiguration.HasKey(b => b.Id);
-
-            paymentConfiguration.Property(b => b.Id)
-                .ForSqlServerUseSequenceHiLo("paymentseq", DEFAULT_SCHEMA);
-
-            paymentConfiguration.Property<int>("BuyerId")
-                .IsRequired();
-
-            paymentConfiguration.Property<string>("CardHolderName")
-                .HasMaxLength(200)
-                .IsRequired();
-
-            paymentConfiguration.Property<string>("Alias")
-                .HasMaxLength(200)
-                .IsRequired();
-
-            paymentConfiguration.Property<string>("CardNumber")
-                .HasMaxLength(25)
-                .IsRequired();
-
-            paymentConfiguration.Property<DateTime>("Expiration")
-                .IsRequired();
-
-            paymentConfiguration.Property<int>("CardTypeId")
-                .IsRequired();
-
-            paymentConfiguration.HasOne(p => p.CardType)
-                .WithMany()
-                .HasForeignKey("CardTypeId");
-        }
-
-        void ConfigureOrder(EntityTypeBuilder<Order> orderConfiguration)
-        {
-            orderConfiguration.ToTable("orders", DEFAULT_SCHEMA);
-
-            orderConfiguration.HasKey(o => o.Id);
-
-            orderConfiguration.Property(o => o.Id)
-                .ForSqlServerUseSequenceHiLo("orderseq", DEFAULT_SCHEMA);
-
-            orderConfiguration.Property<DateTime>("OrderDate").IsRequired();
-            orderConfiguration.Property<int>("BuyerId").IsRequired();
-            orderConfiguration.Property<int>("OrderStatusId").IsRequired();
-            orderConfiguration.Property<int>("PaymentMethodId").IsRequired();
-
-            var navigation = orderConfiguration.Metadata.FindNavigation(nameof(Order.OrderItems));
-            // DDD Patterns comment:
-            //Set as Field (New since EF 1.1) to access the OrderItem collection property through its field
-            navigation.SetPropertyAccessMode(PropertyAccessMode.Field);
-
-            orderConfiguration.HasOne(o => o.PaymentMethod)
-                .WithMany()
-                .HasForeignKey("PaymentMethodId")
-                .OnDelete(DeleteBehavior.Restrict);
-
-            orderConfiguration.HasOne(o => o.Buyer)
-                .WithMany()
-                .HasForeignKey("BuyerId");
-
-            orderConfiguration.HasOne(o => o.OrderStatus)
-                .WithMany()
-                .HasForeignKey("OrderStatusId");
-        }
-
-        void ConfigureOrderItems(EntityTypeBuilder<OrderItem> orderItemConfiguration)
-        {
-            orderItemConfiguration.ToTable("orderItems", DEFAULT_SCHEMA);
-
-            orderItemConfiguration.HasKey(o => o.Id);
-
-            orderItemConfiguration.Property(o => o.Id)
-                .ForSqlServerUseSequenceHiLo("orderitemseq");
-
-            orderItemConfiguration.Property<int>("OrderId")
-                .IsRequired();
-
-            orderItemConfiguration.Property<decimal>("Discount")
-                .IsRequired();
-
-            orderItemConfiguration.Property<int>("ProductId")
-                .IsRequired();
-
-            orderItemConfiguration.Property<string>("ProductName")
-                .IsRequired();
-
-            orderItemConfiguration.Property<decimal>("UnitPrice")
-                .IsRequired();
-
-            orderItemConfiguration.Property<int>("Units")
-                .IsRequired();
-
-            orderItemConfiguration.Property<string>("PictureUrl")
-                .IsRequired(false);
-        }
-
-        void ConfigureOrderStatus(EntityTypeBuilder<OrderStatus> orderStatusConfiguration)
-        {
-            orderStatusConfiguration.ToTable("orderstatus", DEFAULT_SCHEMA);
-
-            orderStatusConfiguration.HasKey(o => o.Id);
-
-            orderStatusConfiguration.Property(o => o.Id)
-                .HasDefaultValue(1)
-                .ValueGeneratedNever()
-                .IsRequired();
-
-            orderStatusConfiguration.Property(o => o.Name)
-                .HasMaxLength(200)
-                .IsRequired();
-        }
-
-        void ConfigureCardTypes(EntityTypeBuilder<CardType> cardTypesConfiguration)
-        {
-            cardTypesConfiguration.ToTable("cardtypes", DEFAULT_SCHEMA);
-
-            cardTypesConfiguration.HasKey(ct => ct.Id);
-
-            cardTypesConfiguration.Property(ct => ct.Id)
-                .HasDefaultValue(1)
-                .ValueGeneratedNever()
-                .IsRequired();
-
-            cardTypesConfiguration.Property(ct => ct.Name)
-                .HasMaxLength(200)
-                .IsRequired();
+            public Task Send(IRequest request, CancellationToken cancellationToken = default(CancellationToken))
+            {
+                return Task.CompletedTask;
+            }
         }
     }
 }

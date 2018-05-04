@@ -13,17 +13,20 @@
         <link rel="stylesheet" href="~/css/shared/components/identity/identity.css" />
         <link rel="stylesheet" href="~/css/shared/components/pager/pager.css" />
         <link rel="stylesheet" href="~/css/basket/basket.component.css" />
+        <link rel="stylesheet" href="~/css/campaigns/campaigns.component.css" />
         <link rel="stylesheet" href="~/css/basket/basket-status/basket-status.component.css" />
         <link rel="stylesheet" href="~/css/catalog/catalog.component.css" />
         <link rel="stylesheet" href="~/css/orders/orders.component.css" />
         <link rel="stylesheet" href="~/css/orders/orders-detail/orders-detail.component.css" />
         <link rel="stylesheet" href="~/css/orders/orders-new/orders-new.component.css" />
+        <link rel="stylesheet" href="~/css/override.css" type="text/css" />
     </environment>
     <environment names="Staging,Production">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.5/css/bootstrap.min.css"
+        <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/css/bootstrap.min.css"
               asp-fallback-href="~/lib/bootstrap/dist/css/bootstrap.min.css"
               asp-fallback-test-class="sr-only" asp-fallback-test-property="position" asp-fallback-test-value="absolute" />
         <link rel="stylesheet" href="~/css/site.min.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/override.css" type="text/css" />
     </environment>
 </head>
 <body>
@@ -36,6 +39,7 @@
                         <a asp-area="" asp-controller="Catalog" asp-action="Index">
                             <img src="~/images/brand.png" />
                         </a>
+                    </a>
                 </section>
 
                 @await Html.PartialAsync("_LoginPartial")
@@ -55,7 +59,7 @@
                 </section>
 
                 <section class="col-sm-6">
-                    <div class="esh-app-footer-text hidden-xs"> e-ShoponContainers. All right reserved </div>
+                    <img class="esh-app-footer-text hidden-xs" src="~/images/main_footer_text.png" width="335" height="26" alt="footer text image" />
                 </section>
 
             </article>
@@ -72,7 +76,7 @@
                 asp-fallback-src="~/lib/jquery/dist/jquery.min.js"
                 asp-fallback-test="window.jQuery">
         </script>
-        <script src="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.6/bootstrap.min.js"
+        <script src="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/bootstrap.min.js"
                 asp-fallback-src="~/lib/bootstrap/dist/js/bootstrap.min.js"
                 asp-fallback-test="window.jQuery && window.jQuery.fn && window.jQuery.fn.modal">
         </script>

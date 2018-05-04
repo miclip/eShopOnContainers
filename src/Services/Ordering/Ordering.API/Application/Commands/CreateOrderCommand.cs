@@ -2,6 +2,8 @@
 using MediatR;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Collections;
+using Ordering.API.Application.Models;
 
 namespace Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands
 {
@@ -16,10 +18,13 @@ namespace Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands
 
     [DataContract]
     public class CreateOrderCommand
-        :IAsyncRequest<bool>
+        : IRequest<bool>
     {
         [DataMember]
         private readonly List<OrderItemDTO> _orderItems;
+
+        [DataMember]
+        public string UserId { get; private set; }
 
         [DataMember]
         public string City { get; private set; }
@@ -54,20 +59,17 @@ namespace Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands
         [DataMember]
         public IEnumerable<OrderItemDTO> OrderItems => _orderItems;
 
-        public void AddOrderItem(OrderItemDTO item)
-        {
-            _orderItems.Add(item);
-        }
-
         public CreateOrderCommand()
         {
             _orderItems = new List<OrderItemDTO>();
         }
 
-        public CreateOrderCommand(string city, string street, string state, string country, string zipcode,
+        public CreateOrderCommand(List<BasketItem> basketItems, string userId, string city, string street, string state, string country, string zipcode,
             string cardNumber, string cardHolderName, DateTime cardExpiration,
             string cardSecurityNumber, int cardTypeId) : this()
         {
+            _orderItems = MapToOrderItems(basketItems);
+            UserId = userId;
             City = city;
             Street = street;
             State = state;
@@ -75,11 +77,26 @@ namespace Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands
             ZipCode = zipcode;
             CardNumber = cardNumber;
             CardHolderName = cardHolderName;
+            CardExpiration = cardExpiration;
             CardSecurityNumber = cardSecurityNumber;
             CardTypeId = cardTypeId;
             CardExpiration = cardExpiration;
         }
 
+        private List<OrderItemDTO> MapToOrderItems(List<BasketItem> basketItems)
+        {
+            var result = new List<OrderItemDTO>();
+            basketItems.ForEach((item) => {
+                result.Add(new OrderItemDTO() {
+                    ProductId = int.TryParse(item.ProductId, out int id) ? id : -1,
+                    ProductName = item.ProductName,
+                    PictureUrl = item.PictureUrl,
+                    UnitPrice = item.UnitPrice,
+                    Units = item.Quantity                 
+                });
+            });
+            return result;
+        }
 
         public class OrderItemDTO
         {

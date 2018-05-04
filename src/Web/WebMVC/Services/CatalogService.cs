@@ -1,60 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.eShopOnContainers.BuildingBlocks.Resilience.Http;
 using Microsoft.eShopOnContainers.WebMVC.ViewModels;
-using Microsoft.CodeAnalysis.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net.Http;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using WebMVC.Infrastructure;
 
 namespace Microsoft.eShopOnContainers.WebMVC.Services
 {
     public class CatalogService : ICatalogService
     {
         private readonly IOptionsSnapshot<AppSettings> _settings;
-        private HttpClient _apiClient;
+        private readonly IHttpClient _apiClient;
+        private readonly ILogger<CatalogService> _logger;
+
         private readonly string _remoteServiceBaseUrl;
-  
-        public CatalogService(IOptionsSnapshot<AppSettings> settings, ILoggerFactory loggerFactory) {
-            _settings = settings;
-            _remoteServiceBaseUrl = $"{_settings.Value.CatalogUrl}/api/v1/catalog/";
 
-            var log = loggerFactory.CreateLogger("catalog service");
-            log.LogDebug(settings.Value.CatalogUrl);
-        }
-         
-        public async Task<Catalog> GetCatalogItems(int page,int take, int? brand, int? type)
+        public CatalogService(IOptionsSnapshot<AppSettings> settings, IHttpClient httpClient, ILogger<CatalogService> logger)
         {
-            _apiClient = new HttpClient();
-            var itemsQs = $"items?pageIndex={page}&pageSize={take}";
-            var filterQs = "";
+            _settings = settings;
+            _apiClient = httpClient;
+            _logger = logger;
 
-            if (brand.HasValue || type.HasValue)
-            {
-                var brandQs = (brand.HasValue) ? brand.Value.ToString() : "null";
-                var typeQs = (type.HasValue) ? type.Value.ToString() : "null";
-                filterQs = $"/type/{typeQs}/brand/{brandQs}";
-            }
+            _remoteServiceBaseUrl = $"{_settings.Value.CatalogUrl}/api/v1/catalog/";
+        }
 
-            var catalogUrl = $"{_remoteServiceBaseUrl}items{filterQs}?pageIndex={page}&pageSize={take}";
+        public async Task<Catalog> GetCatalogItems(int page, int take, int? brand, int? type)
+        {
+            var allcatalogItemsUri = API.Catalog.GetAllCatalogItems(_remoteServiceBaseUrl, page, take, brand, type);
 
-            var dataString = "";
+            var dataString = await _apiClient.GetStringAsync(allcatalogItemsUri);
 
-            //
-            // Using HttpClient with Retry and Exponential Backoff
-            //
-            var retry = new RetryWithExponentialBackoff();
-            await retry.RunAsync(async () =>
-            {
-                // work with HttpClient call
-                dataString = await _apiClient.GetStringAsync(catalogUrl);
-            });
-
-            //var dataString = await _apiClient.GetStringAsync(catalogUrl);
             var response = JsonConvert.DeserializeObject<Catalog>(dataString);
 
             return response;
@@ -62,18 +41,22 @@ namespace Microsoft.eShopOnContainers.WebMVC.Services
 
         public async Task<IEnumerable<SelectListItem>> GetBrands()
         {
-            _apiClient = new HttpClient();
-            var url = $"{_remoteServiceBaseUrl}catalogBrands";
-            var dataString = await _apiClient.GetStringAsync(url);
+            var getBrandsUri = API.Catalog.GetAllBrands(_remoteServiceBaseUrl);
+
+            var dataString = await _apiClient.GetStringAsync(getBrandsUri);
 
             var items = new List<SelectListItem>();
             items.Add(new SelectListItem() { Value = null, Text = "All", Selected = true });
 
-            JArray brands = JArray.Parse(dataString);
-            foreach (JObject brand in brands.Children<JObject>())
+            var brands = JArray.Parse(dataString);
+
+            foreach (var brand in brands.Children<JObject>())
             {
-                dynamic item = brand;
-                items.Add(new SelectListItem() { Value = item.id, Text = item.brand });
+                items.Add(new SelectListItem()
+                {
+                    Value = brand.Value<string>("id"),
+                    Text = brand.Value<string>("brand")
+                });
             }
 
             return items;
@@ -81,20 +64,22 @@ namespace Microsoft.eShopOnContainers.WebMVC.Services
 
         public async Task<IEnumerable<SelectListItem>> GetTypes()
         {
-            _apiClient = new HttpClient();
-            var url = $"{_remoteServiceBaseUrl}catalogTypes";
-            var dataString = await _apiClient.GetStringAsync(url);
+            var getTypesUri = API.Catalog.GetAllTypes(_remoteServiceBaseUrl);
+
+            var dataString = await _apiClient.GetStringAsync(getTypesUri);
 
             var items = new List<SelectListItem>();
             items.Add(new SelectListItem() { Value = null, Text = "All", Selected = true });
 
-            JArray brands = JArray.Parse(dataString);
-            foreach (JObject brand in brands.Children<JObject>())
+            var brands = JArray.Parse(dataString);
+            foreach (var brand in brands.Children<JObject>())
             {
-                dynamic item = brand;
-                items.Add(new SelectListItem() { Value = item.id, Text = item.type });
+                items.Add(new SelectListItem()
+                {
+                    Value = brand.Value<string>("id"),
+                    Text = brand.Value<string>("type")
+                });
             }
-
             return items;
         }
     }

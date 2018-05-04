@@ -5,6 +5,9 @@
 </div>
 
 <div class="container">
+    <div  class="alert alert-warning esh-orders_new-alert" role="alert" [hidden]="!errorReceived">
+        Not possible to create a new order, please try later on
+    </div>
     <form [formGroup]="newOrderForm" (ngSubmit)="submitForm(newOrderForm.value)">
         <section class="esh-orders_new-section">
             <h4 class="esh-orders_new-title">Shipping Address</h4>
@@ -83,9 +86,9 @@
                     <img class="esh-orders_new-image" src="{{item.pictureurl}}">
                 </section>
                 <section class="esh-orders_new-item esh-orders_new-item--middle col-xs-4">{{item.productname}}</section>
-                <section class="esh-orders_new-item esh-orders_new-item--middle col-xs-1">$ {{item.unitprice}}</section>
+                <section class="esh-orders_new-item esh-orders_new-item--middle col-xs-1">$ {{item.unitprice | number:'.2-2'}}</section>
                 <section class="esh-orders_new-item esh-orders_new-item--middle col-xs-1">{{item.units}}</section>
-                <section class="esh-orders_new-item esh-orders_new-item--middle col-xs-2">$ {{item.units * item.unitprice}}</section>
+                <section class="esh-orders_new-item esh-orders_new-item--middle col-xs-2">$ {{(item.units * item.unitprice) | number:'.2-2'}}</section>
             </article>
         </section>
 
@@ -97,7 +100,7 @@
 
             <article class="esh-orders_new-items row">
                 <section class="esh-orders_new-item col-xs-9"></section>
-                <section class="esh-orders_new-item esh-orders_new-item--mark col-xs-2">$ {{order.total}}</section>
+                <section class="esh-orders_new-item esh-orders_new-item--mark col-xs-2">$ {{order.total | number:'.2-2'}}</section>
             </article>
         </section>
         <section class="esh-orders_new-section">
@@ -105,7 +108,7 @@
                 <div class="col-md-9">
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn esh-orders_new-placeOrder" [disabled]="!newOrderForm.valid">[ Place Order ]</button>
+                    <button type="submit" class="btn esh-orders_new-placeOrder" [disabled]="!newOrderForm.valid || isOrderProcessing">[ Place Order ]</button>
                 </div>
             </div>
         </section>

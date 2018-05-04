@@ -1,39 +1,41 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using StackExchange.Redis;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using StackExchange.Redis;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Microsoft.Extensions.Logging;
-using System.Net;
 
 namespace Microsoft.eShopOnContainers.Services.Basket.API.Model
 {
     public class RedisBasketRepository : IBasketRepository
     {
-        private ILogger<RedisBasketRepository> _logger;        
-        private ConnectionMultiplexer _redis;
+        private readonly ILogger<RedisBasketRepository> _logger;
 
+        private readonly ConnectionMultiplexer _redis;
+        private readonly IDatabase _database;
 
-        public RedisBasketRepository(ConnectionMultiplexer redis, ILoggerFactory loggerFactory)
+        public RedisBasketRepository(ILoggerFactory loggerFactory, ConnectionMultiplexer redis)
         {
+            _logger = loggerFactory.CreateLogger<RedisBasketRepository>();
             _redis = redis;
-           _logger = loggerFactory.CreateLogger<RedisBasketRepository>();
-
+            _database = redis.GetDatabase();
         }
 
-        public async Task<bool> DeleteBasket(string id)
+        public async Task<bool> DeleteBasketAsync(string id)
         {
-            var database = GetDatabase();
-            return await database.KeyDeleteAsync(id.ToString());
+            return await _database.KeyDeleteAsync(id);
         }
 
-        public async Task<CustomerBasket> GetBasket(string customerId)
+        public IEnumerable<string> GetUsers()
         {
-            var database = GetDatabase();
+            var server = GetServer();          
+            var data = server.Keys();
+            return data?.Select(k => k.ToString());
+        }
 
-            var data = await database.StringGetAsync(customerId.ToString());
+        public async Task<CustomerBasket> GetBasketAsync(string customerId)
+        {
+            var data = await _database.StringGetAsync(customerId);
             if (data.IsNullOrEmpty)
             {
                 return null;
@@ -42,25 +44,24 @@ namespace Microsoft.eShopOnContainers.Services.Basket.API.Model
             return JsonConvert.DeserializeObject<CustomerBasket>(data);
         }
 
-        public async Task<CustomerBasket> UpdateBasket(CustomerBasket basket)
+        public async Task<CustomerBasket> UpdateBasketAsync(CustomerBasket basket)
         {
-            var database = GetDatabase();
-
-            var created = await database.StringSetAsync(basket.BuyerId, JsonConvert.SerializeObject(basket));
+            var created = await _database.StringSetAsync(basket.BuyerId, JsonConvert.SerializeObject(basket));
             if (!created)
             {
-                _logger.LogInformation("Problem persisting the item");
+                _logger.LogInformation("Problem occur persisting the item.");
                 return null;
             }
 
-            _logger.LogInformation("basket item persisted succesfully");
-            return await GetBasket(basket.BuyerId);
+            _logger.LogInformation("Basket item persisted succesfully.");
+
+            return await GetBasketAsync(basket.BuyerId);
         }
 
-        private IDatabase GetDatabase()
+        private IServer GetServer()
         {
-           return _redis.GetDatabase();
+            var endpoint = _redis.GetEndPoints();
+            return _redis.GetServer(endpoint.First());
         }
     }
 }
-

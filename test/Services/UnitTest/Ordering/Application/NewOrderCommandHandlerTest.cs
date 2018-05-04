@@ -10,53 +10,26 @@ using System.Threading.Tasks;
 
 namespace UnitTest.Ordering.Application
 {
+    using global::Ordering.API.Application.Models;
+    using MediatR;
     using System.Collections;
     using System.Collections.Generic;
     using Xunit;
+    using static Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands.CreateOrderCommand;
+
     public class NewOrderRequestHandlerTest
     {
-        private readonly Mock<IBuyerRepository<Buyer>> _buyerRepositoryMock;
-        private readonly Mock<IOrderRepository<Order>> _orderRepositoryMock;
+        private readonly Mock<IOrderRepository> _orderRepositoryMock;
         private readonly Mock<IIdentityService> _identityServiceMock;
+        private readonly Mock<IMediator> _mediator;
 
         public NewOrderRequestHandlerTest()
         {
 
-            _buyerRepositoryMock = new Mock<IBuyerRepository<Buyer>>();
-            _orderRepositoryMock = new Mock<IOrderRepository<Order>>();
+            _orderRepositoryMock = new Mock<IOrderRepository>();
             _identityServiceMock = new Mock<IIdentityService>();
+            _mediator = new Mock<IMediator>();
         }
-
-        [Fact]
-        public async Task Handle_returns_true_when_order_is_persisted_succesfully()
-        {
-
-            var buyerId = "1234";
-
-            var fakeOrderCmd = FakeOrderRequestWithBuyer(new Dictionary<string, object>
-            { ["cardExpiration"] = DateTime.Now.AddYears(1) });
-
-            // Arrange
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.FindAsync(buyerId))
-               .Returns(Task.FromResult<Buyer>(FakeBuyer()));
-
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _orderRepositoryMock.Setup(or => or.Add(FakeOrder()))
-                .Returns(FakeOrder());
-
-            _orderRepositoryMock.Setup(or => or.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _identityServiceMock.Setup(svc => svc.GetUserIdentity()).Returns(buyerId);
-            //Act
-            var handler = new CreateOrderCommandHandler(_buyerRepositoryMock.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
-            var result = await handler.Handle(fakeOrderCmd);
-
-            //Assert
-            Assert.True(result);
-        }        
 
         [Fact]
         public async Task Handle_return_false_if_order_is_not_persisted()
@@ -66,152 +39,21 @@ namespace UnitTest.Ordering.Application
             var fakeOrderCmd = FakeOrderRequestWithBuyer(new Dictionary<string, object>
             { ["cardExpiration"] = DateTime.Now.AddYears(1) });
 
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.FindAsync(buyerId))
-                .Returns(Task.FromResult<Buyer>(FakeBuyer()));
+            _orderRepositoryMock.Setup(orderRepo => orderRepo.GetAsync(It.IsAny<int>()))
+               .Returns(Task.FromResult<Order>(FakeOrder()));
 
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
+            _orderRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
                 .Returns(Task.FromResult(1));
 
-            _orderRepositoryMock.Setup(or => or.Add(FakeOrder())).Returns(FakeOrder());
-            _orderRepositoryMock.Setup(or => or.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(0));
             _identityServiceMock.Setup(svc => svc.GetUserIdentity()).Returns(buyerId);
 
             //Act
-            var handler = new CreateOrderCommandHandler(_buyerRepositoryMock.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
-            var result = await handler.Handle(fakeOrderCmd);
+            var handler = new CreateOrderCommandHandler(_mediator.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
+            var cltToken = new System.Threading.CancellationToken();
+            var result = await handler.Handle(fakeOrderCmd, cltToken);
 
             //Assert
             Assert.False(result);
-        }
-
-        [Fact]
-        public async Task Handle_throws_exception_when_order_expired()
-        {
-
-            var buyerId = "1234";
-
-            var fakeOrderCmd = FakeOrderRequestWithBuyer(new Dictionary<string, object>
-            { ["cardExpiration"] = DateTime.Now.AddYears(-1) });
-
-            // Arrange
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.FindAsync(buyerId))
-               .Returns(Task.FromResult<Buyer>(FakeBuyer()));
-
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _orderRepositoryMock.Setup(or => or.Add(FakeOrder()))
-                .Returns(FakeOrder());
-
-            _orderRepositoryMock.Setup(or => or.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _identityServiceMock.Setup(svc => svc.GetUserIdentity()).Returns(buyerId);
-            //Act
-            var handler = new CreateOrderCommandHandler(_buyerRepositoryMock.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
-
-            //Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () => await handler.Handle(fakeOrderCmd));
-        }        
-
-        [Fact]
-        public async Task Handle_throws_exception_when_no_holdername()
-        {
-
-            var buyerId = "1234";
-
-            var fakeOrderCmd = FakeOrderRequestWithBuyer(new Dictionary<string, object>
-            {
-                ["cardExpiration"] = DateTime.Now.AddYears(1),
-                ["cardHolderName"] = string.Empty,
-            });
-
-            // Arrange
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.FindAsync(buyerId))
-               .Returns(Task.FromResult<Buyer>(FakeBuyer()));
-
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _orderRepositoryMock.Setup(or => or.Add(FakeOrder()))
-                .Returns(FakeOrder());
-
-            _orderRepositoryMock.Setup(or => or.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _identityServiceMock.Setup(svc => svc.GetUserIdentity()).Returns(buyerId);
-            //Act
-            var handler = new CreateOrderCommandHandler(_buyerRepositoryMock.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
-
-            //Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () => await handler.Handle(fakeOrderCmd));
-        }
-
-        [Fact]
-        public async Task Handle_throws_exception_when_no_securityNumber()
-        {
-
-            var buyerId = "1234";
-
-            var fakeOrderCmd = FakeOrderRequestWithBuyer(new Dictionary<string, object>
-            {
-                ["cardExpiration"] = DateTime.Now.AddYears(1),
-                ["cardSecurityNumber"] = string.Empty,
-            });
-
-            // Arrange
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.FindAsync(buyerId))
-               .Returns(Task.FromResult<Buyer>(FakeBuyer()));
-
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _orderRepositoryMock.Setup(or => or.Add(FakeOrder()))
-                .Returns(FakeOrder());
-
-            _orderRepositoryMock.Setup(or => or.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _identityServiceMock.Setup(svc => svc.GetUserIdentity()).Returns(buyerId);
-            //Act
-            var handler = new CreateOrderCommandHandler(_buyerRepositoryMock.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
-
-            //Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () => await handler.Handle(fakeOrderCmd));
-        }
-
-        [Fact]
-        public async Task Handle_throws_exception_when_no_cardNumber()
-        {
-
-            var buyerId = "1234";
-
-            var fakeOrderCmd = FakeOrderRequestWithBuyer(new Dictionary<string, object>
-            {
-                ["cardExpiration"] = DateTime.Now.AddYears(1),
-                ["cardNumber"] = string.Empty,
-            });
-
-            // Arrange
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.FindAsync(buyerId))
-               .Returns(Task.FromResult<Buyer>(FakeBuyer()));
-
-            _buyerRepositoryMock.Setup(buyerRepo => buyerRepo.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _orderRepositoryMock.Setup(or => or.Add(FakeOrder()))
-                .Returns(FakeOrder());
-
-            _orderRepositoryMock.Setup(or => or.UnitOfWork.SaveChangesAsync(default(CancellationToken)))
-                .Returns(Task.FromResult(1));
-
-            _identityServiceMock.Setup(svc => svc.GetUserIdentity()).Returns(buyerId);
-            //Act
-            var handler = new CreateOrderCommandHandler(_buyerRepositoryMock.Object, _orderRepositoryMock.Object, _identityServiceMock.Object);
-
-            //Assert
-            await Assert.ThrowsAsync<ArgumentException>(async () => await handler.Handle(fakeOrderCmd));
         }
 
         [Fact]
@@ -228,12 +70,14 @@ namespace UnitTest.Ordering.Application
 
         private Order FakeOrder()
         {
-            return new Order(1, 1, new Address("street", "city", "state", "country", "zipcode"));
+            return new Order("1", new Address("street", "city", "state", "country", "zipcode"), 1, "12", "111", "fakeName", DateTime.Now.AddYears(1));
         }
 
         private CreateOrderCommand FakeOrderRequestWithBuyer(Dictionary<string, object> args = null)
         {
             return new CreateOrderCommand(
+                new List<BasketItem>(),
+                userId: args != null && args.ContainsKey("userId") ? (string)args["userId"] : null,
                 city: args != null && args.ContainsKey("city") ? (string)args["city"] : null,
                 street: args != null && args.ContainsKey("street") ? (string)args["street"] : null,
                 state: args != null && args.ContainsKey("state") ? (string)args["state"] : null,
@@ -243,7 +87,7 @@ namespace UnitTest.Ordering.Application
                 cardExpiration: args != null && args.ContainsKey("cardExpiration") ? (DateTime)args["cardExpiration"] : DateTime.MinValue,
                 cardSecurityNumber: args != null && args.ContainsKey("cardSecurityNumber") ? (string)args["cardSecurityNumber"] : "123",
                 cardHolderName: args != null && args.ContainsKey("cardHolderName") ? (string)args["cardHolderName"] : "XXX",
-                cardTypeId: args != null && args.ContainsKey("cardTypeId") ? (int)args["cardTypeId"] : 0);
+                cardTypeId: args != null && args.ContainsKey("cardTypeId") ? (int)args["cardTypeId"] : 0);               
         }
     }
 }

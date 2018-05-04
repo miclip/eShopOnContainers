@@ -10,7 +10,6 @@ namespace Ordering.API.Migrations
         {
             migrationBuilder.CreateTable(
                 name: "requests",
-                schema: "ordering",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(nullable: false),
@@ -25,9 +24,7 @@ namespace Ordering.API.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "requests",
-                schema: "ordering");
+            migrationBuilder.DropTable(name: "requests");
         }
     }
 }

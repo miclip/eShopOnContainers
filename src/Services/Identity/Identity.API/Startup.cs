@@ -1,81 +1,101 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Autofac;
+using Autofac.Extensions.DependencyInjection;
+using IdentityServer4.Services;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.ServiceFabric;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.eShopOnContainers.Services.Identity.API.Certificates;
+using Microsoft.eShopOnContainers.Services.Identity.API.Data;
+using Microsoft.eShopOnContainers.Services.Identity.API.Models;
+using Microsoft.eShopOnContainers.Services.Identity.API.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.HealthChecks;
 using Microsoft.Extensions.Logging;
-using Identity.API.Data;
-using Identity.API.Models;
-using Identity.API.Services;
-using Identity.API.Configuration;
-using IdentityServer4.Services;
-using System.Threading;
-using Microsoft.eShopOnContainers.Services.Catalog.API.Infrastructure;
-using Microsoft.AspNetCore.Identity;
-using Steeltoe.Extensions.Configuration;
-using Steeltoe.CloudFoundry.Connector.PostgreSql.EFCore;
+using System;
+using System.Reflection;
+using Steeltoe.CloudFoundry.Connector.MySql.EFCore;
+using Steeltoe.CloudFoundry.Connector.Redis;
+using Steeltoe.CloudFoundry.ConnectorAutofac;
+using Steeltoe.Security.DataProtection;
+using Steeltoe.Management.Endpoint.Health;
+using Steeltoe.Management.CloudFoundry;
 
-namespace eShopOnContainers.Identity
+namespace Microsoft.eShopOnContainers.Services.Identity.API
 {
     public class Startup
     {
-        public Startup(IHostingEnvironment env)
+        public Startup(IConfiguration configuration)
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
-                .AddCloudFoundry();
-
-            if (env.IsDevelopment())
-            {
-                // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
-                builder.AddUserSecrets();
-            }
-
-            builder.AddEnvironmentVariables();
-            Configuration = builder.Build();
+            Configuration = configuration;
         }
 
-        public IConfigurationRoot Configuration { get; }
+        public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
+        public IServiceProvider ConfigureServices(IServiceCollection services)
         {
+            RegisterAppInsights(services);
+
+            services.AddRedisConnectionMultiplexer(Configuration);
+
             // Add framework services.
+            Action<EntityFrameworkCore.Infrastructure.MySqlDbContextOptionsBuilder> mySqlOptionsAction = (o) =>
+                                        {
+                                            o.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name);
+                                            //Configuring Connection Resiliency: https://docs.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency 
+                                            o.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+                                        };
             services.AddDbContext<ApplicationDbContext>(options =>
-             options.UseNpgsql(Configuration));
+                    options.UseMySql(Configuration, mySqlOptionsAction));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
+            // Add custom health check contributor
+            services.AddScoped<IHealthContributor, MySqlHealthContributor>();
+            services.AddScoped<IHealthContributor, RedisHealthContributor>();
+
+            // Add management endpoint services
+            services.AddCloudFoundryActuators(Configuration);
+
             services.Configure<AppSettings>(Configuration);
 
             services.AddMvc();
 
-            services.AddTransient<IEmailSender, AuthMessageSender>();
-            services.AddTransient<ISmsSender, AuthMessageSender>();
+            if (Configuration.GetValue<string>("IsClusterEnv") == bool.TrueString)
+            {
+               services.AddDataProtection()
+                .PersistKeysToRedis()
+                .SetApplicationName("IdentityApi");
+            }
+
             services.AddTransient<ILoginService<ApplicationUser>, EFLoginService>();
             services.AddTransient<IRedirectService, RedirectService>();
 
-            //callbacks urls from config:
-            Dictionary<string, string> clientUrls = new Dictionary<string, string>();
-            clientUrls.Add("Mvc", Configuration.GetValue<string>("MvcClient"));
-            clientUrls.Add("Spa", Configuration.GetValue<string>("SpaClient"));
-
             // Adds IdentityServer
             services.AddIdentityServer(x => x.IssuerUri = "null")
-                .AddTemporarySigningCredential()
-                .AddInMemoryScopes(Config.GetScopes())
-                .AddInMemoryClients(Config.GetClients(clientUrls))
+                .AddSigningCredential(Certificate.Get())
                 .AddAspNetIdentity<ApplicationUser>()
-                .Services.AddTransient<IProfileService, ProfileService>(); 
+                .AddConfigurationStore(options =>
+                {
+                    options.ConfigureDbContext = builder => builder.UseMySql(Configuration,mySqlOptionsAction);
+                })
+                .AddOperationalStore(options =>
+                 {
+                     options.ConfigureDbContext = builder => builder.UseMySql(Configuration,mySqlOptionsAction);
+                 })
+                .Services.AddTransient<IProfileService, ProfileService>();
+
+            var container = new ContainerBuilder();
+            container.Populate(services);
+
+            return new AutofacServiceProvider(container.Build());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -83,17 +103,30 @@ namespace eShopOnContainers.Identity
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
+            loggerFactory.AddAzureWebAppDiagnostics();
+            loggerFactory.AddApplicationInsights(app.ApplicationServices, LogLevel.Trace);
 
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
-                app.UseBrowserLink();
             }
             else
             {
                 app.UseExceptionHandler("/Home/Error");
             }
+
+            var pathBase = Configuration["PATH_BASE"];
+            if (!string.IsNullOrEmpty(pathBase))
+            {
+                loggerFactory.CreateLogger("init").LogDebug($"Using PATH BASE '{pathBase}'");
+                app.UsePathBase(pathBase);
+            }
+
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+            app.Map("/liveness", lapp => lapp.Run(async ctx => ctx.Response.StatusCode = 200));
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
             app.UseStaticFiles();
 
@@ -105,10 +138,11 @@ namespace eShopOnContainers.Identity
                 await next();
             });
 
-            app.UseIdentity();
-
             // Adds IdentityServer
             app.UseIdentityServer();
+
+            // adds Cloud Foundry Management Actuators
+            app.UseCloudFoundryActuators();
 
             app.UseMvc(routes =>
             {
@@ -116,11 +150,24 @@ namespace eShopOnContainers.Identity
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+        }
 
-            //Seed Data
-            var hasher = new PasswordHasher<ApplicationUser>();
-            new ApplicationContextSeed(hasher).SeedAsync(app, loggerFactory)
-            .Wait();
+        private void RegisterAppInsights(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry(Configuration);
+            var orchestratorType = Configuration.GetValue<string>("OrchestratorType");
+
+            if (orchestratorType?.ToUpper() == "K8S")
+            {
+                // Enable K8s telemetry initializer
+                services.EnableKubernetes();
+            }
+            if (orchestratorType?.ToUpper() == "SF")
+            {
+                // Enable SF telemetry initializer
+                services.AddSingleton<ITelemetryInitializer>((serviceProvider) =>
+                    new FabricTelemetryInitializer());
+            }
         }
     }
 }

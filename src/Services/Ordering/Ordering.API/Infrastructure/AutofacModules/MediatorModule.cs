@@ -1,8 +1,11 @@
 ﻿using Autofac;
 using Autofac.Core;
+using FluentValidation;
 using MediatR;
 using Microsoft.eShopOnContainers.Services.Ordering.API.Application.Commands;
-using Microsoft.eShopOnContainers.Services.Ordering.API.Application.Decorators;
+using Ordering.API.Application.DomainEventHandlers.OrderStartedEvent;
+using Ordering.API.Application.Validations;
+using Ordering.API.Infrastructure.Behaviors;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -16,28 +19,41 @@ namespace Microsoft.eShopOnContainers.Services.Ordering.API.Infrastructure.Autof
             builder.RegisterAssemblyTypes(typeof(IMediator).GetTypeInfo().Assembly)
                 .AsImplementedInterfaces();
 
+            // Register all the Command classes (they implement IRequestHandler) in assembly holding the Commands
             builder.RegisterAssemblyTypes(typeof(CreateOrderCommand).GetTypeInfo().Assembly)
-                .As(o => o.GetInterfaces()
-                    .Where(i => i.IsClosedTypeOf(typeof(IAsyncRequestHandler<,>)))
-                    .Select(i => new KeyedService("IAsyncRequestHandler", i)));
+                .AsClosedTypesOf(typeof(IRequestHandler<,>));
+
+            // Register the DomainEventHandler classes (they implement INotificationHandler<>) in assembly holding the Domain Events
+            builder.RegisterAssemblyTypes(typeof(ValidateOrAddBuyerAggregateWhenOrderStartedDomainEventHandler).GetTypeInfo().Assembly)
+                .AsClosedTypesOf(typeof(INotificationHandler<>));
+
+            // Register the Command's Validators (Validators based on FluentValidation library)
+            builder
+                .RegisterAssemblyTypes(typeof(CreateOrderCommandValidator).GetTypeInfo().Assembly)
+                .Where(t => t.IsClosedTypeOf(typeof(IValidator<>)))
+                .AsImplementedInterfaces();
+
 
             builder.Register<SingleInstanceFactory>(context =>
             {
                 var componentContext = context.Resolve<IComponentContext>();
-
-                return t => componentContext.Resolve(t);
+                return t => { object o; return componentContext.TryResolve(t, out o) ? o : null; };
             });
 
             builder.Register<MultiInstanceFactory>(context =>
             {
                 var componentContext = context.Resolve<IComponentContext>();
 
-                return t => (IEnumerable<object>)componentContext.Resolve(typeof(IEnumerable<>).MakeGenericType(t));
+                return t =>
+                {
+                    var resolved = (IEnumerable<object>)componentContext.Resolve(typeof(IEnumerable<>).MakeGenericType(t));
+                    return resolved;
+                };
             });
 
-            builder.RegisterGenericDecorator(typeof(LogDecorator<,>),
-                    typeof(IAsyncRequestHandler<,>),
-                    "IAsyncRequestHandler");
+            builder.RegisterGeneric(typeof(LoggingBehavior<,>)).As(typeof(IPipelineBehavior<,>));
+            builder.RegisterGeneric(typeof(ValidatorBehavior<,>)).As(typeof(IPipelineBehavior<,>));
+
         }
     }
 }

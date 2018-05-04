@@ -1,8 +1,12 @@
 ﻿applications:
 - name: identityapi
-  buildpack: https://github.com/cloudfoundry/dotnet-core-buildpack.git
+  buildpack: dotnet_core_buildpack
   memory: 512M
-  health-check-type: none
+  health-check-http-endpoint: /liveness
+  health-check-type: http
+  env:
+    ASPNETCORE_ENVIRONMENT: Production
   services:
   - eShopIdentityDb
+  - eShopCache
   

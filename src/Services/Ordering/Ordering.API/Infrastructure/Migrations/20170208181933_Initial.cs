@@ -9,15 +9,13 @@ namespace Ordering.API.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(
-                name: "ordering");
 
            migrationBuilder.CreateTable(
                 name: "buyers",
-                schema: "ordering",
+                
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     IdentityGuid = table.Column<string>(maxLength: 200, nullable: false)
                 },
                 constraints: table =>
@@ -27,7 +25,7 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateTable(
                 name: "cardtypes",
-                schema: "ordering",
+                
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false, defaultValue: 1),
@@ -40,11 +38,11 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateTable(
                 name: "address",
-                schema: "ordering",
+                
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     City = table.Column<string>(nullable: true),
                     Country = table.Column<string>(nullable: true),
                     State = table.Column<string>(nullable: true),
@@ -58,7 +56,7 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateTable(
                 name: "orderstatus",
-                schema: "ordering",
+                
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false, defaultValue: 1),
@@ -71,10 +69,10 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateTable(
                 name: "paymentmethods",
-                schema: "ordering",
+                
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     Alias = table.Column<string>(maxLength: 200, nullable: false),
                     BuyerId = table.Column<int>(nullable: false),
                     CardHolderName = table.Column<string>(maxLength: 200, nullable: false),
@@ -88,14 +86,14 @@ namespace Ordering.API.Migrations
                     table.ForeignKey(
                         name: "FK_paymentmethods_buyers_BuyerId",
                         column: x => x.BuyerId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "buyers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_paymentmethods_cardtypes_CardTypeId",
                         column: x => x.CardTypeId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "cardtypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -103,10 +101,10 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateTable(
                 name: "orders",
-                schema: "ordering",
+                
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     AddressId = table.Column<int>(nullable: true),
                     BuyerId = table.Column<int>(nullable: false),
                     OrderDate = table.Column<DateTime>(nullable: false),
@@ -119,28 +117,28 @@ namespace Ordering.API.Migrations
                     table.ForeignKey(
                         name: "FK_orders_address_AddressId",
                         column: x => x.AddressId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "address",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_orders_buyers_BuyerId",
                         column: x => x.BuyerId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "buyers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_orders_orderstatus_OrderStatusId",
                         column: x => x.OrderStatusId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "orderstatus",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_orders_paymentmethods_PaymentMethodId",
                         column: x => x.PaymentMethodId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "paymentmethods",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -148,10 +146,10 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateTable(
                 name: "orderItems",
-                schema: "ordering",
+                
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     Discount = table.Column<decimal>(nullable: false),
                     OrderId = table.Column<int>(nullable: false),
                     PictureUrl = table.Column<string>(nullable: true),
@@ -166,7 +164,7 @@ namespace Ordering.API.Migrations
                     table.ForeignKey(
                         name: "FK_orderItems_orders_OrderId",
                         column: x => x.OrderId,
-                        principalSchema: "ordering",
+                        
                         principalTable: "orders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -174,50 +172,50 @@ namespace Ordering.API.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_buyers_IdentityGuid",
-                schema: "ordering",
+                
                 table: "buyers",
                 column: "IdentityGuid",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_paymentmethods_BuyerId",
-                schema: "ordering",
+                
                 table: "paymentmethods",
                 column: "BuyerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_paymentmethods_CardTypeId",
-                schema: "ordering",
+                
                 table: "paymentmethods",
                 column: "CardTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_orders_AddressId",
-                schema: "ordering",
+                
                 table: "orders",
                 column: "AddressId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_orders_BuyerId",
-                schema: "ordering",
+                
                 table: "orders",
                 column: "BuyerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_orders_OrderStatusId",
-                schema: "ordering",
+                
                 table: "orders",
                 column: "OrderStatusId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_orders_PaymentMethodId",
-                schema: "ordering",
+                
                 table: "orders",
                 column: "PaymentMethodId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_orderItems_OrderId",
-                schema: "ordering",
+                
                 table: "orderItems",
                 column: "OrderId");
         }
@@ -225,32 +223,25 @@ namespace Ordering.API.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "orderItems",
-                schema: "ordering");
+                name: "orderItems");
 
             migrationBuilder.DropTable(
-                name: "orders",
-                schema: "ordering");
+                name: "orders");
 
             migrationBuilder.DropTable(
-                name: "address",
-                schema: "ordering");
+                name: "address");
 
             migrationBuilder.DropTable(
-                name: "orderstatus",
-                schema: "ordering");
+                name: "orderstatus");
 
             migrationBuilder.DropTable(
-                name: "paymentmethods",
-                schema: "ordering");
+                name: "paymentmethods");
 
             migrationBuilder.DropTable(
-                name: "buyers",
-                schema: "ordering");
+                name: "buyers");
 
             migrationBuilder.DropTable(
-                name: "cardtypes",
-                schema: "ordering");
+                name: "cardtypes");
 
           
         }
