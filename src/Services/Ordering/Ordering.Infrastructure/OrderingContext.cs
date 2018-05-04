@@ -14,7 +14,6 @@ namespace Microsoft.eShopOnContainers.Services.Ordering.Infrastructure
 {
     public class OrderingContext : DbContext, IUnitOfWork
     {
-        public const string DEFAULT_SCHEMA = "ordering";
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<PaymentMethod> Payments { get; set; }

@@ -33,7 +33,7 @@ namespace Ordering.API.Migrations
                     b.HasIndex("IdentityGuid")
                         .IsUnique();
 
-                    b.ToTable("buyers","ordering");
+                    b.ToTable("buyers");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.BuyerAggregate.CardType", b =>
@@ -47,7 +47,7 @@ namespace Ordering.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("cardtypes","ordering");
+                    b.ToTable("cardtypes");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.BuyerAggregate.PaymentMethod", b =>
@@ -79,7 +79,7 @@ namespace Ordering.API.Migrations
 
                     b.HasIndex("CardTypeId");
 
-                    b.ToTable("paymentmethods","ordering");
+                    b.ToTable("paymentmethods");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.OrderAggregate.Order", b =>
@@ -105,7 +105,7 @@ namespace Ordering.API.Migrations
 
                     b.HasIndex("PaymentMethodId");
 
-                    b.ToTable("orders","ordering");
+                    b.ToTable("orders");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.OrderAggregate.OrderItem", b =>
@@ -132,7 +132,7 @@ namespace Ordering.API.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("orderItems","ordering");
+                    b.ToTable("orderItems");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.OrderAggregate.OrderStatus", b =>
@@ -146,7 +146,7 @@ namespace Ordering.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("orderstatus","ordering");
+                    b.ToTable("orderstatus");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Infrastructure.Idempotency.ClientRequest", b =>
@@ -180,7 +180,7 @@ namespace Ordering.API.Migrations
 
                     b.HasKey("OrderId");
 
-                    b.ToTable("orders","ordering");
+                    b.ToTable("orders");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Ordering.Domain.AggregatesModel.BuyerAggregate.PaymentMethod", b =>
