@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Catalog.API.Extensions;
 
 namespace Catalog.API.Infrastructure.Migrations
 {
@@ -9,23 +10,23 @@ namespace Catalog.API.Infrastructure.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-           migrationBuilder.CreateTable(
-                name: "catalogbrand",
+            migrationBuilder.CreateTable(
+                name: "CatalogBrand",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     Brand = table.Column<string>(maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_catalogbrand", x => x.Id);
+                    table.PrimaryKey("PK_CatalogBrand", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "CatalogTypes",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     Type = table.Column<string>(maxLength: 100, nullable: false)
                 },
                 constraints: table =>
@@ -34,10 +35,10 @@ namespace Catalog.API.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "catalog",
+                name: "Catalog",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false).Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    Id = table.Column<int>(nullable: false).Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     CatalogBrandId = table.Column<int>(nullable: false),
                     CatalogTypeId = table.Column<int>(nullable: false),
                     Description = table.Column<string>(nullable: true),
@@ -47,15 +48,15 @@ namespace Catalog.API.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_catalog", x => x.Id);
+                    table.PrimaryKey("PK_Catalog", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_catalog_catalogbrand_CatalogBrandId",
+                        name: "FK_Catalog_CatalogBrand_CatalogBrandId",
                         column: x => x.CatalogBrandId,
-                        principalTable: "catalogbrand",
+                        principalTable: "CatalogBrand",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_catalog_CatalogTypes_CatalogTypeId",
+                        name: "FK_Catalog_CatalogTypes_CatalogTypeId",
                         column: x => x.CatalogTypeId,
                         principalTable: "CatalogTypes",
                         principalColumn: "Id",
@@ -63,13 +64,13 @@ namespace Catalog.API.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_catalog_CatalogBrandId",
-                table: "catalog",
+                name: "IX_Catalog_CatalogBrandId",
+                table: "Catalog",
                 column: "CatalogBrandId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_catalog_CatalogTypeId",
-                table: "catalog",
+                name: "IX_Catalog_CatalogTypeId",
+                table: "Catalog",
                 column: "CatalogTypeId");
         }
 
@@ -77,10 +78,10 @@ namespace Catalog.API.Infrastructure.Migrations
         {
            
             migrationBuilder.DropTable(
-                name: "catalog");
+                name: "Catalog");
 
             migrationBuilder.DropTable(
-                name: "catalogbrand");
+                name: "Catalogbrand");
 
             migrationBuilder.DropTable(
                 name: "CatalogTypes");

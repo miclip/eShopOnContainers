@@ -6,7 +6,9 @@
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
-    using System.IO;
+  using Steeltoe.Extensions.Configuration.CloudFoundry;
+  using Steeltoe.Extensions.Logging;
+  using System.IO;
 
     public class Program
     {
@@ -26,22 +28,21 @@
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-                .UseApplicationInsights()
-                .UseHealthChecks("/hc")
+                .UseCloudFoundryHosting()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .UseWebRoot("Pics")
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
                     config.AddEnvironmentVariables();
+                    config.AddCloudFoundry();
                 })
                 .ConfigureLogging((hostingContext, builder) =>
                 {
                     builder.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    builder.AddConsole();
+                    builder.AddDynamicConsole();
                     builder.AddDebug();
                 })
-                .UseApplicationInsights()
                 .Build();
     }
 }

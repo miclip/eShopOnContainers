@@ -1,16 +1,27 @@
 ﻿namespace Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure
 {
-    using Microsoft.eShopOnContainers.Services.Marketing.API.Model;
+  using System.Linq;
+  using Microsoft.eShopOnContainers.Services.Marketing.API.Model;
     using Microsoft.Extensions.Options;
     using MongoDB.Driver;
+  using Steeltoe.Extensions.Configuration.CloudFoundry;
 
-    public class MarketingReadDataContext
+  public class MarketingReadDataContext
     {
         private readonly IMongoDatabase _database = null;
 
-        public MarketingReadDataContext(IOptions<MarketingSettings> settings)
+        public MarketingReadDataContext(IOptions<MarketingSettings> settings, IOptions<CloudFoundryServicesOptions> pcfSettings)
         {
-            var client = new MongoClient(settings.Value.MongoConnectionString);
+            var connectionString = settings.Value.MongoConnectionString;
+
+            var service = pcfSettings.Value.ServicesList.FirstOrDefault(s=>s.Tags.Contains("mongodb"));
+
+            if(service != null)
+            {
+                connectionString = service.Credentials.ContainsKey("uri") ? service.Credentials["uri"].Value: settings.Value.MongoConnectionString;
+            }
+
+            var client = new MongoClient(connectionString);
 
             if (client != null)
             {

@@ -15,7 +15,6 @@ namespace Catalog.API.Infrastructure.Migrations
         {
             modelBuilder
                 .HasAnnotation("ProductVersion", "1.0.1");
-               
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Catalog.API.Infrastructure.CatalogBrand", b =>
                 {
@@ -28,7 +27,7 @@ namespace Catalog.API.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("catalogbrand");
+                    b.ToTable("CatalogBrand");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Catalog.API.Infrastructure.CatalogItem", b =>
@@ -56,7 +55,7 @@ namespace Catalog.API.Infrastructure.Migrations
 
                     b.HasIndex("CatalogTypeId");
 
-                    b.ToTable("catalog");
+                    b.ToTable("Catalog");
                 });
 
             modelBuilder.Entity("Microsoft.eShopOnContainers.Services.Catalog.API.Infrastructure.CatalogType", b =>

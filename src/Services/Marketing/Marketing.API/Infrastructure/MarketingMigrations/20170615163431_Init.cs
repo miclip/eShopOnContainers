@@ -7,14 +7,7 @@ namespace Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure.Mark
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateSequence(
-                name: "campaign_hilo",
-                incrementBy: 10);
-
-            migrationBuilder.CreateSequence(
-                name: "rule_hilo",
-                incrementBy: 10);
-
+            
             migrationBuilder.CreateTable(
                 name: "Campaign",
                 columns: table => new
@@ -66,11 +59,7 @@ namespace Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure.Mark
             migrationBuilder.DropTable(
                 name: "Campaign");
 
-            migrationBuilder.DropSequence(
-                name: "campaign_hilo");
-
-            migrationBuilder.DropSequence(
-                name: "rule_hilo");
+         
         }
     }
 }

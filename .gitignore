@@ -261,6 +261,8 @@ pub/
 /src/Web/WebMVC/wwwroot/css/site.min.css
 **/.kube/**
 
-/_publish
+_publish/
 
 git.properties
+
+.DS_Store

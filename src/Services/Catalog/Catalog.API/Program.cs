@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Steeltoe.Extensions.Configuration.CloudFoundry;
+using Steeltoe.Extensions.Logging;
 using System.IO;
 namespace Microsoft.eShopOnContainers.Services.Catalog.API
 {
@@ -32,18 +34,18 @@ namespace Microsoft.eShopOnContainers.Services.Catalog.API
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
              .UseStartup<Startup>()
-                .UseApplicationInsights()
-                .UseHealthChecks("/hc")
+                .UseCloudFoundryHosting()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseWebRoot("Pics")
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
                     config.AddEnvironmentVariables();
+                    config.AddCloudFoundry();
                 })
                 .ConfigureLogging((hostingContext, builder) =>
                 {
                     builder.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    builder.AddConsole();
+                    builder.AddDynamicConsole();
                     builder.AddDebug();
                 })                
                 .Build();    

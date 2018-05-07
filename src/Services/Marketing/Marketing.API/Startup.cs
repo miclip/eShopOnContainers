@@ -25,9 +25,15 @@
     using Microsoft.ApplicationInsights.ServiceFabric;
     using Microsoft.AspNetCore.Authentication.JwtBearer;
     using Microsoft.EntityFrameworkCore.Diagnostics;
-    using Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure.Middlewares;
+  using Microsoft.EntityFrameworkCore.Infrastructure;
+  using Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure.Middlewares;
     using RabbitMQ.Client;
-    using Swashbuckle.AspNetCore.Swagger;
+  using Steeltoe.CloudFoundry.Connector.MySql.EFCore;
+  using Steeltoe.CloudFoundry.Connector.RabbitMQ;
+  using Steeltoe.Extensions.Configuration.CloudFoundry;
+  using Steeltoe.Management.CloudFoundry;
+  using Steeltoe.Management.Endpoint.Health;
+  using Swashbuckle.AspNetCore.Swagger;
     using System;
     using System.Collections.Generic;
     using System.IdentityModel.Tokens.Jwt;
@@ -47,6 +53,8 @@
         // This method gets called by the runtime. Use this method to add services to the container.
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
+            services.ConfigureCloudFoundryOptions(Configuration);
+
             RegisterAppInsights(services);
 
             // Add framework services.
@@ -55,38 +63,22 @@
                 options.Filters.Add(typeof(HttpGlobalExceptionFilter));
             }).AddControllersAsServices();  //Injecting Controllers themselves thru DIFor further info see: http://docs.autofac.org/en/latest/integration/aspnetcore.html#controllers-as-services
 
+            Action<MySqlDbContextOptionsBuilder> mySqlOptionsAction = (o) =>
+                                        {
+                                            o.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name);
+                                            //Configuring Connection Resiliency: https://docs.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency 
+                                            o.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+                                        };
+
             services.Configure<MarketingSettings>(Configuration);
 
             ConfigureAuthService(services);            
 
-            services.AddHealthChecks(checks => 
-            {
-                checks.AddValueTaskCheck("HTTP Endpoint", () => new ValueTask<IHealthCheckResult>(HealthCheckResult.Healthy("Ok")));
-
-                var accountName = Configuration.GetValue<string>("AzureStorageAccountName");
-                var accountKey = Configuration.GetValue<string>("AzureStorageAccountKey");
-                if (!string.IsNullOrEmpty(accountName) && !string.IsNullOrEmpty(accountKey))
-                {
-                    checks.AddAzureBlobStorageCheck(accountName, accountKey);
-                }
-            });
-
             services.AddDbContext<MarketingContext>(options =>
             {
-                options.UseSqlServer(Configuration["ConnectionString"],
-                                     sqlServerOptionsAction: sqlOptions =>
-                                     {
-                                         sqlOptions.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name);
-                                         //Configuring Connection Resiliency: https://docs.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency 
-                                         sqlOptions.EnableRetryOnFailure(maxRetryCount: 10, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
-                                     });
-
-                // Changing default behavior when client evaluation occurs to throw. 
-                // Default in EF Core would be to log a warning when client evaluation is performed.
-                options.ConfigureWarnings(warnings => warnings.Throw(RelationalEventId.QueryClientEvaluationWarning));
-                //Check Client vs. Server evaluation: https://docs.microsoft.com/en-us/ef/core/querying/client-eval
+                options.UseMySql(Configuration, mySqlOptionsAction);
             });
-
+            
             if (Configuration.GetValue<bool>("AzureServiceBusEnabled"))
             {
                 services.AddSingleton<IServiceBusPersisterConnection>(sp =>
@@ -101,34 +93,11 @@
             }
             else
             {
-                services.AddSingleton<IRabbitMQPersistentConnection>(sp =>
-                {
-                    var logger = sp.GetRequiredService<ILogger<DefaultRabbitMQPersistentConnection>>();
-
-                    var factory = new ConnectionFactory()
-                    {
-                        HostName = Configuration["EventBusConnection"]
-                    };
-
-                    if (!string.IsNullOrEmpty(Configuration["EventBusUserName"]))
-                    {
-                        factory.UserName = Configuration["EventBusUserName"];
-                    }
-
-                    if (!string.IsNullOrEmpty(Configuration["EventBusPassword"]))
-                    {
-                        factory.Password = Configuration["EventBusPassword"];
-                    }
-
-                    var retryCount = 5;
-                    if (!string.IsNullOrEmpty(Configuration["EventBusRetryCount"]))
-                    {
-                        retryCount = int.Parse(Configuration["EventBusRetryCount"]);
-                    }
-
-                    return new DefaultRabbitMQPersistentConnection(factory, logger, retryCount);
-                });
+                  // add Cloud Foundry RabbitMQ service
+                services.AddRabbitMQConnection(Configuration);
+                services.AddSingleton<IRabbitMQPersistentConnection, DefaultRabbitMQPersistentConnection>();
             }            
+            
 
             // Add framework services.
             services.AddSwaggerGen(options =>
@@ -165,6 +134,13 @@
                     .AllowAnyHeader()
                     .AllowCredentials());
             });
+
+             // Add custom health check contributor
+            services.AddScoped<IHealthContributor, MySqlHealthContributor>();
+            services.AddScoped<IHealthContributor, RabbitMQHealthContributor>();
+
+            // Add management endpoint services
+            services.AddCloudFoundryActuators(Configuration);
 
             RegisterEventBus(services);
 
@@ -203,6 +179,8 @@
             ConfigureAuth(app);
 
             app.UseMvcWithDefaultRoute();
+
+            app.UseCloudFoundryActuators();
 
             app.UseSwagger()
                .UseSwaggerUI(c =>

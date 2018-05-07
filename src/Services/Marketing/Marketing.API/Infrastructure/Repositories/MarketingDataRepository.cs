@@ -1,6 +1,7 @@
 ﻿using Microsoft.eShopOnContainers.Services.Marketing.API.Model;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using Steeltoe.Extensions.Configuration.CloudFoundry;
 using System.Threading.Tasks;
 
 namespace Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure.Repositories
@@ -10,9 +11,9 @@ namespace Microsoft.eShopOnContainers.Services.Marketing.API.Infrastructure.Repo
     {
         private readonly MarketingReadDataContext _context;
 
-        public MarketingDataRepository(IOptions<MarketingSettings> settings)
+        public MarketingDataRepository(IOptions<MarketingSettings> settings, IOptions<CloudFoundryServicesOptions> pcfSettings)
         {
-            _context = new MarketingReadDataContext(settings);
+            _context = new MarketingReadDataContext(settings, pcfSettings);
         }
 
         public async Task<MarketingData> GetAsync(string userId)

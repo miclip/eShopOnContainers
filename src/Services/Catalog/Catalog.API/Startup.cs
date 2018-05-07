@@ -11,7 +11,8 @@
     using Microsoft.Azure.ServiceBus;
     using Microsoft.EntityFrameworkCore;
     using Microsoft.EntityFrameworkCore.Diagnostics;
-    using Microsoft.eShopOnContainers.BuildingBlocks.EventBus;
+  using Microsoft.EntityFrameworkCore.Infrastructure;
+  using Microsoft.eShopOnContainers.BuildingBlocks.EventBus;
     using Microsoft.eShopOnContainers.BuildingBlocks.EventBus.Abstractions;
     using Microsoft.eShopOnContainers.BuildingBlocks.EventBusRabbitMQ;
     using Microsoft.eShopOnContainers.BuildingBlocks.EventBusServiceBus;
@@ -26,7 +27,11 @@
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
     using RabbitMQ.Client;
-    using System;
+  using Steeltoe.CloudFoundry.Connector.MySql.EFCore;
+  using Steeltoe.CloudFoundry.Connector.RabbitMQ;
+  using Steeltoe.Management.CloudFoundry;
+  using Steeltoe.Management.Endpoint.Health;
+  using System;
     using System.Data.Common;
     using System.Reflection;
 
@@ -43,55 +48,33 @@
         {
             // Add framework services.
 
-            RegisterAppInsights(services);
-
-            services.AddHealthChecks(checks =>
-            {
-                var minutes = 1;
-                if (int.TryParse(Configuration["HealthCheck:Timeout"], out var minutesParsed))
-                {
-                    minutes = minutesParsed;
-                }
-                checks.AddSqlCheck("CatalogDb", Configuration["ConnectionString"], TimeSpan.FromMinutes(minutes));
-
-                var accountName = Configuration.GetValue<string>("AzureStorageAccountName");
-                var accountKey = Configuration.GetValue<string>("AzureStorageAccountKey");
-                if (!string.IsNullOrEmpty(accountName) && !string.IsNullOrEmpty(accountKey))
-                {
-                    checks.AddAzureBlobStorageCheck(accountName, accountKey);
-                }
-            });
-
             services.AddMvc(options =>
             {
                 options.Filters.Add(typeof(HttpGlobalExceptionFilter));
             }).AddControllersAsServices();
 
+            Action<MySqlDbContextOptionsBuilder> mySqlOptionsAction = (o) =>
+                                        {
+                                            o.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name);
+                                            //Configuring Connection Resiliency: https://docs.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency 
+                                            o.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
+                                        };
+
+            // Add custom health check contributor
+            services.AddScoped<IHealthContributor, MySqlHealthContributor>();
+            services.AddScoped<IHealthContributor, RabbitMQHealthContributor>();
+
+            // Add management endpoint services
+            services.AddCloudFoundryActuators(Configuration);
+
             services.AddDbContext<CatalogContext>(options =>
             {
-                options.UseSqlServer(Configuration["ConnectionString"],
-                                     sqlServerOptionsAction: sqlOptions =>
-                                     {
-                                         sqlOptions.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name);
-                                         //Configuring Connection Resiliency: https://docs.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency 
-                                         sqlOptions.EnableRetryOnFailure(maxRetryCount: 10, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
-                                     });
-
-                // Changing default behavior when client evaluation occurs to throw. 
-                // Default in EF Core would be to log a warning when client evaluation is performed.
-                options.ConfigureWarnings(warnings => warnings.Throw(RelationalEventId.QueryClientEvaluationWarning));
-                //Check Client vs. Server evaluation: https://docs.microsoft.com/en-us/ef/core/querying/client-eval
+                options.UseMySql(Configuration, mySqlOptionsAction);
             });
 
             services.AddDbContext<IntegrationEventLogContext>(options =>
             {
-                options.UseSqlServer(Configuration["ConnectionString"],
-                                     sqlServerOptionsAction: sqlOptions =>
-                                     {
-                                         sqlOptions.MigrationsAssembly(typeof(Startup).GetTypeInfo().Assembly.GetName().Name);
-                                         //Configuring Connection Resiliency: https://docs.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency 
-                                         sqlOptions.EnableRetryOnFailure(maxRetryCount: 10, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
-                                     });
+               options.UseMySql(Configuration, mySqlOptionsAction);
             });
 
             services.Configure<CatalogSettings>(Configuration);
@@ -137,34 +120,9 @@
             }
             else
             {
-                services.AddSingleton<IRabbitMQPersistentConnection>(sp =>
-                {
-                    var settings = sp.GetRequiredService<IOptions<CatalogSettings>>().Value;
-                    var logger = sp.GetRequiredService<ILogger<DefaultRabbitMQPersistentConnection>>();
-
-                    var factory = new ConnectionFactory()
-                    {
-                        HostName = Configuration["EventBusConnection"]
-                    };
-
-                    if (!string.IsNullOrEmpty(Configuration["EventBusUserName"]))
-                    {
-                        factory.UserName = Configuration["EventBusUserName"];
-                    }
-
-                    if (!string.IsNullOrEmpty(Configuration["EventBusPassword"]))
-                    {
-                        factory.Password = Configuration["EventBusPassword"];
-                    }
-
-                    var retryCount = 5;
-                    if (!string.IsNullOrEmpty(Configuration["EventBusRetryCount"]))
-                    {
-                        retryCount = int.Parse(Configuration["EventBusRetryCount"]);
-                    }
-
-                    return new DefaultRabbitMQPersistentConnection(factory, logger, retryCount);
-                });
+                 // add Cloud Foundry RabbitMQ service
+                services.AddRabbitMQConnection(Configuration);
+                services.AddSingleton<IRabbitMQPersistentConnection, DefaultRabbitMQPersistentConnection>();
             }
 
             RegisterEventBus(services);
@@ -196,6 +154,8 @@
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
             app.UseCors("CorsPolicy");
+
+            app.UseCloudFoundryActuators();
 
             app.UseMvcWithDefaultRoute();
 
