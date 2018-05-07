@@ -5,7 +5,8 @@
     using MongoDB.Bson;
     using MongoDB.Driver;
     using MongoDB.Driver.GeoJsonObjectModel;
-    using System.Collections.Generic;
+  using Steeltoe.Extensions.Configuration.CloudFoundry;
+  using System.Collections.Generic;
     using System.Threading.Tasks;
     using ViewModel;
 
@@ -14,9 +15,9 @@
     {
         private readonly LocationsContext _context;       
 
-        public LocationsRepository(IOptions<LocationSettings> settings)
+        public LocationsRepository(IOptions<LocationSettings> settings, IOptions<CloudFoundryServicesOptions> cloudFoundrySettings)
         {
-            _context = new LocationsContext(settings);
+            _context = new LocationsContext(settings, cloudFoundrySettings);
         }        
         
         public async Task<Locations> GetAsync(int locationId)

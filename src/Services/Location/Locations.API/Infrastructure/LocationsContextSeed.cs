@@ -7,7 +7,8 @@
     using Microsoft.Extensions.Options;
     using MongoDB.Driver;
     using MongoDB.Driver.GeoJsonObjectModel;
-    using System.Collections.Generic;
+  using Steeltoe.Extensions.Configuration.CloudFoundry;
+  using System.Collections.Generic;
     using System.Threading.Tasks;
 
     public class LocationsContextSeed
@@ -18,7 +19,10 @@
             var config = applicationBuilder
                 .ApplicationServices.GetRequiredService<IOptions<LocationSettings>>();
 
-            ctx = new LocationsContext(config);
+            var cloudFoundrySettings = applicationBuilder
+                .ApplicationServices.GetRequiredService<IOptions<CloudFoundryServicesOptions>>(); 
+
+            ctx = new LocationsContext(config,cloudFoundrySettings);
 
             if (!ctx.Locations.Database.GetCollection<Locations>(nameof(Locations)).AsQueryable().Any())
             {

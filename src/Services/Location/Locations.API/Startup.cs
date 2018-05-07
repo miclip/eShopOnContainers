@@ -21,6 +21,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.HealthChecks;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
+using Steeltoe.CloudFoundry.Connector.RabbitMQ;
+using Steeltoe.Extensions.Configuration.CloudFoundry;
+using Steeltoe.Management.CloudFoundry;
+using Steeltoe.Management.Endpoint.Health;
 using Swashbuckle.AspNetCore.Swagger;
 using System;
 using System.Collections.Generic;
@@ -41,6 +45,8 @@ namespace Microsoft.eShopOnContainers.Services.Locations.API
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
             RegisterAppInsights(services);
+
+            services.ConfigureCloudFoundryOptions(Configuration);
 
             services.AddMvc(options =>
             {
@@ -65,40 +71,12 @@ namespace Microsoft.eShopOnContainers.Services.Locations.API
             }
             else
             {
-                services.AddSingleton<IRabbitMQPersistentConnection>(sp =>
-                {
-                    var logger = sp.GetRequiredService<ILogger<DefaultRabbitMQPersistentConnection>>();
-
-                    var factory = new ConnectionFactory()
-                    {
-                        HostName = Configuration["EventBusConnection"]
-                    };
-
-                    if (!string.IsNullOrEmpty(Configuration["EventBusUserName"]))
-                    {
-                        factory.UserName = Configuration["EventBusUserName"];
-                    }
-
-                    if (!string.IsNullOrEmpty(Configuration["EventBusPassword"]))
-                    {
-                        factory.Password = Configuration["EventBusPassword"];
-                    }
-
-                    var retryCount = 5;
-                    if (!string.IsNullOrEmpty(Configuration["EventBusRetryCount"]))
-                    {
-                        retryCount = int.Parse(Configuration["EventBusRetryCount"]);
-                    }
-
-                    return new DefaultRabbitMQPersistentConnection(factory, logger, retryCount);
-                });
+                  // add Cloud Foundry RabbitMQ service
+                services.AddRabbitMQConnection(Configuration);
+                services.AddSingleton<IRabbitMQPersistentConnection, DefaultRabbitMQPersistentConnection>();
             }
 
-            services.AddHealthChecks(checks =>
-            {
-                checks.AddValueTaskCheck("HTTP Endpoint", () => new ValueTask<IHealthCheckResult>(HealthCheckResult.Healthy("Ok")));
-            });
-
+        
             RegisterEventBus(services);
 
             // Add framework services.
@@ -138,6 +116,11 @@ namespace Microsoft.eShopOnContainers.Services.Locations.API
                     .AllowCredentials());
             });
 
+            services.AddScoped<IHealthContributor, RabbitMQHealthContributor>();
+
+            // Add management endpoint services
+            services.AddCloudFoundryActuators(Configuration);
+
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddTransient<IIdentityService, IdentityService>();
             services.AddTransient<ILocationsService, LocationsService>();
@@ -169,6 +152,8 @@ namespace Microsoft.eShopOnContainers.Services.Locations.API
             app.UseCors("CorsPolicy");
 
             ConfigureAuth(app);
+
+            app.UseCloudFoundryActuators();
 
             app.UseMvcWithDefaultRoute();
 

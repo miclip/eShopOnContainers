@@ -9,5 +9,4 @@
   services:
   - eShopMarketingDb
   - eShopMQ
-  - eShopMarketingDocDb
-  
+  - eShopDocDb
