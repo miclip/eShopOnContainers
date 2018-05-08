@@ -15,6 +15,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.HealthChecks;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using Steeltoe.CloudFoundry.Connector.Redis;
+using Steeltoe.Management.CloudFoundry;
+using Steeltoe.Security.DataProtection;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using WebMVC.Infrastructure;
@@ -37,35 +40,20 @@ namespace Microsoft.eShopOnContainers.WebMVC
         {
             RegisterAppInsights(services);
 
+            services.AddRedisConnectionMultiplexer(Configuration);
+
             services.AddMvc();
 
             services.AddSession();
 
             if (Configuration.GetValue<string>("IsClusterEnv") == bool.TrueString)
             {
-                services.AddDataProtection(opts =>
-                {
-                    opts.ApplicationDiscriminator = "eshop.webmvc";
-                })
-                .PersistKeysToRedis(ConnectionMultiplexer.Connect(Configuration["DPConnectionString"]), "DataProtection-Keys");
+                services.AddDataProtection()
+                    .PersistKeysToRedis()
+                    .SetApplicationName("eshop.webmvc");
             }
 
             services.Configure<AppSettings>(Configuration);
-
-            services.AddHealthChecks(checks =>
-            {
-                var minutes = 1;
-                if (int.TryParse(Configuration["HealthCheck:Timeout"], out var minutesParsed))
-                {
-                    minutes = minutesParsed;
-                }
-
-                checks.AddUrlCheck(Configuration["CatalogUrlHC"], TimeSpan.FromMinutes(minutes));
-                checks.AddUrlCheck(Configuration["OrderingUrlHC"], TimeSpan.FromMinutes(minutes));
-                checks.AddUrlCheck(Configuration["BasketUrlHC"], TimeSpan.Zero); //No cache for this HealthCheck, better just for demos 
-                checks.AddUrlCheck(Configuration["IdentityUrlHC"], TimeSpan.FromMinutes(minutes));
-                checks.AddUrlCheck(Configuration["MarketingUrlHC"], TimeSpan.FromMinutes(minutes));
-            });
 
             // Add application services.
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
@@ -75,6 +63,9 @@ namespace Microsoft.eShopOnContainers.WebMVC
             services.AddTransient<ICampaignService, CampaignService>();
             services.AddTransient<ILocationService, LocationService>();
             services.AddTransient<IIdentityParser<ApplicationUser>, IdentityParser>();
+
+            // Add management endpoint services
+            services.AddCloudFoundryActuators(Configuration);
 
             if (Configuration.GetValue<string>("UseResilientHttp") == bool.TrueString)
             {
@@ -123,7 +114,7 @@ namespace Microsoft.eShopOnContainers.WebMVC
                 options.ResponseType = useLoadTest ? "code id_token token" : "code id_token";
                 options.SaveTokens = true;
                 options.GetClaimsFromUserInfoEndpoint = true;
-                options.RequireHttpsMetadata = false;
+                options.RequireHttpsMetadata = true;
                 options.Scope.Add("openid");
                 options.Scope.Add("profile");
                 options.Scope.Add("orders");
@@ -189,6 +180,9 @@ namespace Microsoft.eShopOnContainers.WebMVC
                     name: "defaultError",
                     template: "{controller=Error}/{action=Error}");
             });
+
+            app.UseCloudFoundryActuators();
+
         }
 
         private void RegisterAppInsights(IServiceCollection services)

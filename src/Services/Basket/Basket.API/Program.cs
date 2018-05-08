@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Steeltoe.Extensions.Configuration.CloudFoundry;
+using Steeltoe.Extensions.Logging;
 using System.IO;
 
 namespace Microsoft.eShopOnContainers.Services.Basket.API
@@ -21,20 +23,20 @@ namespace Microsoft.eShopOnContainers.Services.Basket.API
                 {
                     options.ConfigPath = "/Failing";
                 })
-                .UseHealthChecks("/hc")
+                .UseCloudFoundryHosting()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseStartup<Startup>()
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
                     config.AddEnvironmentVariables();
+                    config.AddCloudFoundry();
                 })
                 .ConfigureLogging((hostingContext, builder) =>
                 {
                     builder.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    builder.AddConsole();
+                    builder.AddDynamicConsole();
                     builder.AddDebug();
                 })
-                .UseApplicationInsights()
                 .Build();
     }
 }

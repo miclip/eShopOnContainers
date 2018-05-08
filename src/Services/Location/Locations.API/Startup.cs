@@ -153,8 +153,6 @@ namespace Microsoft.eShopOnContainers.Services.Locations.API
 
             ConfigureAuth(app);
 
-            app.UseCloudFoundryActuators();
-
             app.UseMvcWithDefaultRoute();
 
             app.UseSwagger()
@@ -167,6 +165,8 @@ namespace Microsoft.eShopOnContainers.Services.Locations.API
 
             LocationsContextSeed.SeedAsync(app, loggerFactory)
                 .Wait();
+
+            app.UseCloudFoundryActuators();
         }
 
         private void RegisterAppInsights(IServiceCollection services)

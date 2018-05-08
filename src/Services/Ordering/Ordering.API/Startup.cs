@@ -181,10 +181,7 @@
             app.Map("/liveness", lapp => lapp.Run(async ctx => ctx.Response.StatusCode = 200));
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
-            app.UseCors("CorsPolicy");
-
-            // adds Cloud Foundry Management Actuators
-            app.UseCloudFoundryActuators();
+            app.UseCors("CorsPolicy");          
 
             ConfigureAuth(app);
             app.UseMvcWithDefaultRoute();
@@ -198,6 +195,9 @@
                });
 
             ConfigureEventBus(app);
+
+             // adds Cloud Foundry Management Actuators
+            app.UseCloudFoundryActuators();
         }
 
         private void RegisterAppInsights(IServiceCollection services)

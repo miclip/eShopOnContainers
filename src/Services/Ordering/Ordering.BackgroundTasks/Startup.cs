@@ -95,15 +95,16 @@ namespace Ordering.BackgroundTasks
             app.Map("/liveness", lapp => lapp.Run(async ctx => ctx.Response.StatusCode = 200));
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
-            // adds Cloud Foundry Management Actuators
-            app.UseCloudFoundryActuators();
-
-             app.UseMvc(routes =>
+            app.UseMvc(routes =>
             {
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            // adds Cloud Foundry Management Actuators
+            app.UseCloudFoundryActuators();
+
         }
 
 

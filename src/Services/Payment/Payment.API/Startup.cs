@@ -90,9 +90,6 @@ namespace Payment.API
             app.Map("/liveness", lapp => lapp.Run(async ctx => ctx.Response.StatusCode = 200));
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
-            // adds Cloud Foundry Management Actuators
-            app.UseCloudFoundryActuators();
-
             ConfigureEventBus(app);
 
             app.UseMvc(routes =>
@@ -101,6 +98,9 @@ namespace Payment.API
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+            // adds Cloud Foundry Management Actuators
+            app.UseCloudFoundryActuators();
         }
 
         private void RegisterAppInsights(IServiceCollection services)

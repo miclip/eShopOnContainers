@@ -1,5 +1,5 @@
 ﻿applications:
-- name: eshopcontainersmvc
+- name: basketapi
   buildpack: dotnet_core_buildpack
   memory: 512M
   health-check-http-endpoint: /liveness
@@ -7,6 +7,6 @@
   env:
     ASPNETCORE_ENVIRONMENT: Production
   services:
+  - eShopMQ
   - eShopCache
-
   

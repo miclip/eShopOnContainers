@@ -26,6 +26,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using StackExchange.Redis;
+using Steeltoe.CloudFoundry.Connector.RabbitMQ;
+using Steeltoe.CloudFoundry.Connector.Redis;
+using Steeltoe.Management.CloudFoundry;
+using Steeltoe.Management.Endpoint.Health;
 using Swashbuckle.AspNetCore.Swagger;
 using System;
 using System.Collections.Generic;
@@ -59,30 +63,10 @@ namespace Microsoft.eShopOnContainers.Services.Basket.API
 
             ConfigureAuthService(services);
 
-            services.AddHealthChecks(checks =>
-            {
-                checks.AddValueTaskCheck("HTTP Endpoint", () => new ValueTask<IHealthCheckResult>(HealthCheckResult.Healthy("Ok")),
-                                         TimeSpan.Zero  //No cache for this HealthCheck, better just for demos
-                                        );
-            });
-
             services.Configure<BasketSettings>(Configuration);            
 
-            //By connecting here we are making sure that our service
-            //cannot start until redis is ready. This might slow down startup,
-            //but given that there is a delay on resolving the ip address
-            //and then creating the connection it seems reasonable to move
-            //that cost to startup instead of having the first request pay the
-            //penalty.
-            services.AddSingleton<ConnectionMultiplexer>(sp =>
-            {
-                var settings = sp.GetRequiredService<IOptions<BasketSettings>>().Value;
-                var configuration = ConfigurationOptions.Parse(settings.ConnectionString, true);
-
-                configuration.ResolveDns = true;
-
-                return ConnectionMultiplexer.Connect(configuration);
-            });
+        
+            services.AddRedisConnectionMultiplexer(Configuration);
 
 
             if (Configuration.GetValue<bool>("AzureServiceBusEnabled"))
@@ -99,7 +83,9 @@ namespace Microsoft.eShopOnContainers.Services.Basket.API
             }
             else
             {
-                
+                   // add Cloud Foundry RabbitMQ service
+                services.AddRabbitMQConnection(Configuration);
+                services.AddSingleton<IRabbitMQPersistentConnection, DefaultRabbitMQPersistentConnection>();
             }
 
             RegisterEventBus(services);
@@ -129,6 +115,11 @@ namespace Microsoft.eShopOnContainers.Services.Basket.API
 
                 options.OperationFilter<AuthorizeCheckOperationFilter>();
             });
+
+            services.AddScoped<IHealthContributor, RabbitMQHealthContributor>();
+
+            // Add management endpoint services
+            services.AddCloudFoundryActuators(Configuration);
 
             services.AddCors(options =>
             {
@@ -184,6 +175,8 @@ namespace Microsoft.eShopOnContainers.Services.Basket.API
                });
 
             ConfigureEventBus(app);
+
+            app.UseCloudFoundryActuators();
 
         }
 

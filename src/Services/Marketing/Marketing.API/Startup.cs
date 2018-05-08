@@ -180,8 +180,6 @@
 
             app.UseMvcWithDefaultRoute();
 
-            app.UseCloudFoundryActuators();
-
             app.UseSwagger()
                .UseSwaggerUI(c =>
                {
@@ -191,6 +189,8 @@
                });            
 
             ConfigureEventBus(app);
+
+            app.UseCloudFoundryActuators();
         }
 
         private void RegisterAppInsights(IServiceCollection services)

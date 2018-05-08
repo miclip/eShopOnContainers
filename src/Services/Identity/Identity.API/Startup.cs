@@ -141,15 +141,15 @@ namespace Microsoft.eShopOnContainers.Services.Identity.API
             // Adds IdentityServer
             app.UseIdentityServer();
 
-            // adds Cloud Foundry Management Actuators
-            app.UseCloudFoundryActuators();
-
             app.UseMvc(routes =>
             {
                 routes.MapRoute(
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+
+             // adds Cloud Foundry Management Actuators
+            app.UseCloudFoundryActuators();
         }
 
         private void RegisterAppInsights(IServiceCollection services)

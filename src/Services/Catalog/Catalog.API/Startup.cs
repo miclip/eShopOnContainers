@@ -155,8 +155,6 @@
 
             app.UseCors("CorsPolicy");
 
-            app.UseCloudFoundryActuators();
-
             app.UseMvcWithDefaultRoute();
 
             app.UseSwagger()
@@ -166,6 +164,8 @@
               });
 
             ConfigureEventBus(app);
+
+            app.UseCloudFoundryActuators();
         }
 
         private void RegisterAppInsights(IServiceCollection services)
